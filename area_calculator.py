@@ -49,13 +49,18 @@ class RoomResult:
 
 @dataclass
 class ConcessionSummary:
-    item:             str
-    description:      str
-    total_area_m2:    float
-    effective_gfa_m2: float   # after multiplier
-    subject_to_cap:   bool
+    item:               str
+    item_no:            str   # APP-151 item number e.g. "5", "2.1", "38"
+    pnap_ref:           str   # e.g. "JPN1", "PNAP APP-2 & APP-42"
+    description:        str
+    total_area_m2:      float
+    effective_gfa_m2:   float
+    subject_to_cap:     bool
     requires_beam_plus: bool
-    cap_warning:      bool = False
+    requires_prereq:    bool
+    domestic:           bool
+    non_domestic:       bool
+    cap_warning:        bool = False
 
 
 @dataclass
@@ -129,30 +134,40 @@ class BuildingReport:
             "warnings":            self.warnings,
             "rooms": [
                 {
-                    "id":           r.input.room_id,
-                    "label":        r.input.label,
-                    "floor":        r.input.floor,
-                    "polygon_m2":   round(r.area_m2, 4),
-                    "gfa_m2":       round(r.gfa_area_m2, 4),
-                    "nofa_m2":      round(r.nofa_area_m2, 4),
-                    "gfa_rule":     r.classification.gfa_rule.value,
-                    "nofa_rule":    r.classification.nofa_rule.value,
-                    "concession":   r.classification.concession_item,
+                    "id":             r.input.room_id,
+                    "label":          r.input.label,
+                    "floor":          r.input.floor,
+                    "polygon_m2":     round(r.area_m2, 4),
+                    "gfa_m2":         round(r.gfa_area_m2, 4),
+                    "nofa_m2":        round(r.nofa_area_m2, 4),
+                    "gfa_rule":       r.classification.gfa_rule.value,
+                    "nofa_rule":      r.classification.nofa_rule.value,
+                    "item_no":        r.classification.item_no,
+                    "concession":     r.classification.concession_item,
+                    "pnap_ref":       r.classification.pnap_ref,
                     "subject_to_cap": r.classification.subject_to_cap,
-                    "gfa_note":     r.classification.gfa_note,
-                    "nofa_note":    r.classification.nofa_note,
+                    "requires_prereq": r.classification.requires_prereq,
+                    "domestic":       r.classification.domestic,
+                    "non_domestic":   r.classification.non_domestic,
+                    "gfa_note":       r.classification.gfa_note,
+                    "nofa_note":      r.classification.nofa_note,
                 }
                 for r in self.rooms
             ],
             "concessions": [
                 {
-                    "item":             c.item,
-                    "description":      c.description,
-                    "total_area_m2":    round(c.total_area_m2, 4),
-                    "effective_gfa_m2": round(c.effective_gfa_m2, 4),
-                    "subject_to_cap":   c.subject_to_cap,
+                    "item":               c.item,
+                    "item_no":            c.item_no,
+                    "pnap_ref":           c.pnap_ref,
+                    "description":        c.description,
+                    "total_area_m2":      round(c.total_area_m2, 4),
+                    "effective_gfa_m2":   round(c.effective_gfa_m2, 4),
+                    "subject_to_cap":     c.subject_to_cap,
                     "requires_beam_plus": c.requires_beam_plus,
-                    "cap_warning":      c.cap_warning,
+                    "requires_prereq":    c.requires_prereq,
+                    "domestic":           c.domestic,
+                    "non_domestic":       c.non_domestic,
+                    "cap_warning":        c.cap_warning,
                 }
                 for c in self.concessions
             ],
@@ -200,15 +215,20 @@ class AreaCalculator:
             c = r.classification
             if not c.is_concession or not c.concession_item:
                 continue
-            key = c.concession_item
+            key = c.item_no or c.concession_item
             if key not in concession_map:
                 concession_map[key] = {
-                    "item":             key,
+                    "item":             c.concession_item,
+                    "item_no":          c.item_no,
+                    "pnap_ref":         c.pnap_ref,
                     "description":      c.gfa_note,
                     "total_area_m2":    0.0,
                     "effective_gfa_m2": 0.0,
                     "subject_to_cap":   c.subject_to_cap,
                     "requires_beam_plus": c.requires_beam_plus,
+                    "requires_prereq":  c.requires_prereq,
+                    "domestic":         c.domestic,
+                    "non_domestic":     c.non_domestic,
                 }
             concession_map[key]["total_area_m2"]    += r.area_m2
             concession_map[key]["effective_gfa_m2"] += r.gfa_area_m2
@@ -227,11 +247,16 @@ class AreaCalculator:
             cap_warn = v["subject_to_cap"] and cap_exceeded
             concession_list.append(ConcessionSummary(
                 item=v["item"],
+                item_no=v["item_no"],
+                pnap_ref=v["pnap_ref"],
                 description=v["description"],
                 total_area_m2=v["total_area_m2"],
                 effective_gfa_m2=v["effective_gfa_m2"],
                 subject_to_cap=v["subject_to_cap"],
                 requires_beam_plus=v["requires_beam_plus"],
+                requires_prereq=v["requires_prereq"],
+                domestic=v["domestic"],
+                non_domestic=v["non_domestic"],
                 cap_warning=cap_warn,
             ))
 

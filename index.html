@@ -326,6 +326,21 @@ main {
 .badge-excl    { background: #fce4e4; color: var(--danger); }
 .badge-cond    { background: #e8eaf6; color: #3949ab; }
 .badge-cap     { background: var(--ink); color: var(--paper); }
+.item-no-badge {
+  display: inline-block; font-family: var(--mono); font-size: 9px;
+  font-weight: 700; letter-spacing: 0.5px; padding: 1px 6px;
+  background: var(--accent2); color: white; margin-right: 4px;
+}
+.item-no-badge.small { font-size: 8px; padding: 1px 5px; }
+.conc-header { display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+               font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.conc-meta   { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.pnap-ref    { font-family: var(--mono); font-size: 9px; color: var(--muted);
+               margin-top: 2px; letter-spacing: 0.3px; }
+.concession-tag.bp     { background: #e0f0ff; color: #1a5c8a; }
+.concession-tag.prereq { background: #f5f0e0; color: #7a5800; }
+.concession-tag.warn   { background: #fce4e4; color: var(--danger); font-weight: 700; }
+.conc-exceeded { background: #fff5f5 !important; }
 
 /* ── Results panel ──────────────────────────────────────────────────────── */
 #results { display: none; }
@@ -415,6 +430,8 @@ main {
   transition: all 0.2s; text-decoration: none;
 }
 .btn-download:hover { background: var(--accent2); color: var(--paper); }
+.btn-download-pdf { color: var(--accent); border-color: var(--accent); margin-top: 8px; }
+.btn-download-pdf:hover { background: var(--accent); color: var(--paper); }
 .btn-download svg { width: 16px; height: 16px; stroke: currentColor; }
 
 /* ── Error state ────────────────────────────────────────────────────────── */
@@ -450,6 +467,105 @@ main {
   transition: opacity 0.15s; z-index: 100;
 }
 [data-tip]:hover::after { opacity: 1; }
+
+/* ── Scale Confirm Modal ────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(10,15,26,0.6);
+  backdrop-filter: blur(2px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.visible { display: flex; }
+
+.modal {
+  background: var(--card-bg);
+  border: 2px solid var(--ink);
+  width: 100%; max-width: 440px;
+  margin: 24px;
+  animation: slideIn 0.25s cubic-bezier(0.16,1,0.3,1);
+}
+
+.modal-header {
+  background: var(--ink); color: var(--paper);
+  padding: 16px 24px;
+  display: flex; align-items: center; gap: 12px;
+}
+.modal-header h3 { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+.modal-icon {
+  width: 32px; height: 32px; background: var(--accent);
+  display: grid; place-items: center; flex-shrink: 0; font-size: 16px;
+}
+
+.modal-body { padding: 24px; }
+
+.modal-desc {
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  line-height: 1.7; margin-bottom: 20px;
+}
+.modal-desc strong { color: var(--ink); }
+
+.modal-detected {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; margin-bottom: 20px;
+  border: 1.5px solid var(--rule); background: var(--paper);
+}
+.modal-detected-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted); flex: 1;
+}
+.modal-detected-value {
+  font-family: var(--mono); font-size: 20px; font-weight: 500;
+  color: var(--ink);
+}
+.modal-confidence {
+  font-family: var(--mono); font-size: 9px; padding: 2px 8px;
+  letter-spacing: 1px; text-transform: uppercase;
+}
+.modal-confidence.high   { background: #e8f5e9; color: var(--success); }
+.modal-confidence.medium { background: #fff3e0; color: var(--warn); }
+.modal-confidence.low    { background: #fce4e4; color: var(--danger); }
+
+.modal-override {
+  margin-bottom: 8px;
+}
+.modal-override label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  display: block; margin-bottom: 6px;
+}
+.modal-override-row {
+  display: flex; gap: 8px; align-items: center;
+}
+.modal-override-row span {
+  font-family: var(--mono); font-size: 13px; color: var(--muted);
+}
+#modal-scale-input {
+  flex: 1; font-family: var(--mono); font-size: 14px;
+  padding: 10px 12px; border: 1.5px solid var(--rule);
+  background: var(--paper); color: var(--ink);
+  outline: none; transition: border-color 0.15s;
+}
+#modal-scale-input:focus { border-color: var(--accent2); }
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1.5px solid var(--rule);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.btn-modal-confirm {
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 10px 24px; background: var(--ink); color: var(--paper);
+  border: none; cursor: pointer; transition: background 0.15s;
+}
+.btn-modal-confirm:hover { background: var(--accent); }
+.btn-modal-cancel {
+  font-family: var(--sans); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 10px 20px; background: transparent; color: var(--muted);
+  border: 1.5px solid var(--rule); cursor: pointer; transition: all 0.15s;
+}
+.btn-modal-cancel:hover { border-color: var(--ink); color: var(--ink); }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 footer {
@@ -629,6 +745,11 @@ footer {
               <span>Generate Excel area schedule (.xlsx)</span>
             </label>
 
+            <label class="checkbox-row">
+              <input type="checkbox" id="annotate-pdf" checked/>
+              <span>Generate annotated floor plan PDF</span>
+            </label>
+
             <div class="error-box" id="error-box"><p id="error-text"></p></div>
 
             <button class="btn-analyse" id="btn-analyse" disabled onclick="runAnalyse()">
@@ -688,7 +809,10 @@ footer {
         <div class="card animate-in">
           <div class="card-header">
             <h2>Area Report <span id="demo-label"></span></h2>
-            <span class="card-label" id="results-meta"></span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              <span class="card-label" id="results-meta"></span>
+              <span id="scale-info" style="display:none;font-family:var(--mono);font-size:10px;color:var(--accent2);"></span>
+            </div>
           </div>
           <div class="card-body">
 
@@ -755,7 +879,7 @@ footer {
               </table>
             </div>
 
-            <!-- Download -->
+            <!-- Download Excel -->
             <a class="btn-download" id="btn-download" href="#" style="display:none">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -763,6 +887,17 @@ footer {
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
               Download Excel Area Schedule
+            </a>
+
+            <!-- Download Annotated PDF -->
+            <a class="btn-download btn-download-pdf" id="btn-download-pdf" href="#" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+                <polyline points="7 10 12 15 17 10"/>
+              </svg>
+              Download Annotated Floor Plan PDF
             </a>
 
           </div>
@@ -855,6 +990,37 @@ footer {
     </div>
   </div>
 </main>
+
+<!-- ── Scale Confirm Modal ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="scale-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-icon">📐</div>
+      <h3>Confirm Drawing Scale</h3>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc" id="modal-desc">
+        We detected a drawing scale from your file. Please confirm it is correct before proceeding.
+      </p>
+      <div class="modal-detected">
+        <div class="modal-detected-label">Detected Scale</div>
+        <div class="modal-detected-value" id="modal-scale-display">1:100</div>
+        <span class="modal-confidence" id="modal-confidence-badge">—</span>
+      </div>
+      <div class="modal-override">
+        <label>Override Scale (if incorrect)</label>
+        <div class="modal-override-row">
+          <span>1 :</span>
+          <input type="number" id="modal-scale-input" min="1" max="9999" placeholder="e.g. 100"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="cancelModal()">Cancel Upload</button>
+      <button class="btn-modal-confirm" onclick="confirmScale()">Confirm & Analyse →</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── Footer ──────────────────────────────────────────────────────────── -->
 <footer>
@@ -990,44 +1156,192 @@ function renderRules(rules) {
 }
 
 // ── Analyse (file upload) ─────────────────────────────────────────────────────
+let _pendingAnalyseParams = null;  // saved while modal is open
+
 async function runAnalyse() {
   if (!selectedFile) return;
 
   const buildingType = document.getElementById('building-type').value;
   const floorLabel   = document.getElementById('floor-label').value || '—';
   const projectName  = document.getElementById('project-name').value || 'Floor Plan';
-  const scale        = getScale();
+  const userScale    = getScale();
   const exportExcel  = document.getElementById('export-excel').checked;
 
-  if (!scale) { showError('error-box', 'Please enter a valid drawing scale (e.g. 1:125).'); return; }
+  if (!userScale) { showError('error-box', 'Please enter a valid drawing scale (e.g. 1:125).'); return; }
 
   btnAnalyse.disabled = true;
   btnAnalyse.classList.add('loading');
+  btnAnalyse.textContent = 'Detecting scale…';
   clearError('error-box');
   resultsEl.classList.remove('visible');
   isDemoResult = false;
 
+  // ── Step 1: pre-flight scale detection ──────────────────────────────────
+  let detectedScale = userScale;
+  let detectionMethod = 'user_input';
+
+  try {
+    const preForm = new FormData();
+    preForm.append('file', selectedFile);
+    preForm.append('scale', userScale);
+    const preRes  = await fetch(`${API_BASE}/api/detect-scale`, { method: 'POST', body: preForm });
+    const preData = await preRes.json();
+
+    if (preRes.ok && preData.success) {
+      detectedScale   = preData.scale_to_use;
+      detectionMethod = preData.detection_method;
+
+      // Show confirmation modal
+      _pendingAnalyseParams = { buildingType, floorLabel, projectName, exportExcel };
+      showScaleModal(detectedScale, detectionMethod, preData.confidence, userScale);
+
+      // Modal will call confirmScale() to continue — stop here
+      btnAnalyse.disabled = false;
+      btnAnalyse.classList.remove('loading');
+      btnAnalyse.textContent = '';
+      btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner"></span>';
+      return;
+    }
+  } catch (e) {
+    // Pre-flight failed — proceed with user scale directly
+    logger.debug?.('Pre-flight detect-scale failed, using user scale');
+  }
+
+  // ── Step 2: if pre-flight failed, run directly with user scale ───────────
+  btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner"></span>';
+  await _doAnalyse(buildingType, floorLabel, projectName, userScale, exportExcel);
+}
+
+function showScaleModal(detectedScale, method, confidence, userScale) {
+  const modal      = document.getElementById('scale-modal');
+  const display    = document.getElementById('modal-scale-display');
+  const badge      = document.getElementById('modal-confidence-badge');
+  const desc       = document.getElementById('modal-desc');
+  const input      = document.getElementById('modal-scale-input');
+
+  display.textContent = `1:${detectedScale}`;
+  input.value         = detectedScale;
+  input.placeholder   = detectedScale;
+
+  // Confidence badge
+  badge.className  = `modal-confidence ${confidence}`;
+  badge.textContent = confidence === 'high' ? 'High confidence'
+                    : confidence === 'medium' ? 'Medium confidence'
+                    : 'Low confidence';
+
+  // Description
+  const methodLabel = method === 'text'       ? 'title block text (e.g. "SCALE 1:100")'
+                    : method === 'scale_bar'   ? 'scale bar image analysis'
+                    : 'your manual selection';
+  desc.innerHTML = `Scale <strong>1:${detectedScale}</strong> was detected from <strong>${methodLabel}</strong>.`
+    + (userScale !== detectedScale
+      ? ` Your manual selection was 1:${userScale}.`
+      : '')
+    + ` Please confirm or enter a different value below.`;
+
+  modal.classList.add('visible');
+  input.focus();
+  input.select();
+}
+
+function cancelModal() {
+  document.getElementById('scale-modal').classList.remove('visible');
+  _pendingAnalyseParams = null;
+}
+
+async function confirmScale() {
+  const input  = document.getElementById('modal-scale-input');
+  const scale  = parseInt(input.value, 10);
+  if (!scale || scale < 1 || scale > 9999) {
+    input.style.borderColor = 'var(--danger)';
+    input.focus();
+    return;
+  }
+  input.style.borderColor = '';
+  document.getElementById('scale-modal').classList.remove('visible');
+
+  if (!_pendingAnalyseParams) return;
+  const { buildingType, floorLabel, projectName, exportExcel } = _pendingAnalyseParams;
+  _pendingAnalyseParams = null;
+
+  btnAnalyse.disabled = true;
+  btnAnalyse.classList.add('loading');
+  await _doAnalyse(buildingType, floorLabel, projectName, scale, exportExcel);
+}
+
+async function _doAnalyse(buildingType, floorLabel, projectName, scale, exportExcel) {
+  const annotatePdf = document.getElementById('annotate-pdf')?.checked ?? false;
+
   const form = new FormData();
-  form.append('file', selectedFile);
+  form.append('file',          selectedFile);
   form.append('building_type', buildingType);
-  form.append('floor', floorLabel);
-  form.append('project_name', projectName);
-  form.append('scale', scale);
-  form.append('export_excel', exportExcel ? 'true' : 'false');
+  form.append('floor',         floorLabel);
+  form.append('project_name',  projectName);
+  form.append('scale',         scale);
+  form.append('export_excel',  exportExcel ? 'true' : 'false');
 
   try {
     const res  = await fetch(`${API_BASE}/api/analyse`, { method: 'POST', body: form });
     const data = await res.json();
     if (!res.ok || !data.success) {
       showError('error-box', data.error || `Server error (${res.status})`);
+      return;
+    }
+
+    // If annotate requested, fire off annotate call with same file
+    if (annotatePdf && selectedFile && selectedFile.name.toLowerCase().endsWith('.pdf')) {
+      renderResults(data, false);
+      // Kick off annotation in background
+      _doAnnotate(buildingType, floorLabel, projectName, scale, data.rooms);
     } else {
       renderResults(data, false);
     }
+
   } catch (e) {
     showError('error-box', `Could not reach API at ${API_BASE}. Make sure the backend is running.`);
   } finally {
     btnAnalyse.disabled = false;
     btnAnalyse.classList.remove('loading');
+  }
+}
+
+async function _doAnnotate(buildingType, floorLabel, projectName, scale, rooms) {
+  const dlBtn = document.getElementById('btn-download-pdf');
+  dlBtn.style.display = 'flex';
+  dlBtn.textContent   = '⏳ Generating annotated PDF…';
+  dlBtn.removeAttribute('href');
+
+  try {
+    const form = new FormData();
+    form.append('file',          selectedFile);
+    form.append('building_type', buildingType);
+    form.append('floor',         floorLabel);
+    form.append('project_name',  projectName);
+    form.append('scale',         scale);
+    form.append('rooms',         JSON.stringify(rooms || []));
+
+    const res  = await fetch(`${API_BASE}/api/annotate`, { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (res.ok && data.success && data.annotated_pdf_url) {
+      dlBtn.href = `${API_BASE}${data.annotated_pdf_url}`;
+      dlBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;stroke:currentColor">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+          <polyline points="7 10 12 15 17 10"/>
+        </svg>
+        Download Annotated Floor Plan PDF`;
+    } else {
+      dlBtn.textContent = '⚠ Annotation failed — ' + (data.error || 'unknown error');
+      dlBtn.style.color = 'var(--danger)';
+      dlBtn.style.borderColor = 'var(--danger)';
+    }
+  } catch (e) {
+    dlBtn.textContent = '⚠ Annotation request failed';
+    dlBtn.style.color = 'var(--danger)';
+    dlBtn.style.borderColor = 'var(--danger)';
   }
 }
 
@@ -1132,6 +1446,16 @@ function renderResults(data, isDemo) {
   document.getElementById('results-meta').textContent =
     `${data.rooms_parsed} rooms · ${data.building_type} · ${data.floor || data.project_name || '—'}`;
 
+  // Show scale info if auto-detected
+  const scaleInfo = document.getElementById('scale-info');
+  if (data.scale_used) {
+    const src = data.scale_source === 'scale_bar_detected' ? '📐 auto-detected from scale bar' : 'user input';
+    scaleInfo.textContent = `Scale 1:${data.scale_used} (${src})`;
+    scaleInfo.style.display = 'block';
+  } else {
+    scaleInfo.style.display = 'none';
+  }
+
   // Metrics — animated
   const gfaEl   = document.getElementById('m-gfa');
   const nofaEl  = document.getElementById('m-nofa');
@@ -1159,15 +1483,27 @@ function renderResults(data, isDemo) {
   const concSection = document.getElementById('concessions-section');
   const concGrid    = document.getElementById('concessions-grid');
   if (concessions.length > 0) {
+    // Sort by item_no numerically
+    const sorted = [...concessions].sort((a, b) => {
+      return parseFloat(a.item_no || 99) - parseFloat(b.item_no || 99);
+    });
     concSection.style.display = 'block';
-    concGrid.innerHTML = concessions.map(c => `
-      <div class="concession-row">
-        <div class="concession-name">${c.item}</div>
-        <div class="concession-area">${c.effective_gfa_m2.toFixed(2)} m²</div>
-        <span class="concession-tag ${c.subject_to_cap ? 'cap' : 'free'}">
-          ${c.subject_to_cap ? 'Cap subject' : 'Cap exempt'}
-        </span>
-      </div>`).join('');
+    concGrid.innerHTML = sorted.map(c => {
+      const capTag    = c.subject_to_cap  ? `<span class="concession-tag cap">Cap-subject</span>` : `<span class="concession-tag free">Cap-exempt</span>`;
+      const bpTag     = c.requires_beam_plus ? `<span class="concession-tag bp">BEAM+</span>` : '';
+      const prereqTag = c.requires_prereq ? `<span class="concession-tag prereq">Pre-req</span>` : '';
+      const warnTag   = c.cap_warning     ? `<span class="concession-tag warn">⚠ Exceeded</span>` : '';
+      const itemBadge = c.item_no         ? `<span class="item-no-badge">Item ${c.item_no}</span>` : '';
+      const pnapRef   = c.pnap_ref        ? `<div class="pnap-ref">${c.pnap_ref}</div>` : '';
+      return `
+        <div class="concession-row${c.cap_warning ? ' conc-exceeded' : ''}">
+          <div class="concession-name">
+            <div class="conc-header">${itemBadge} ${c.item}</div>
+            <div class="conc-meta">${capTag}${bpTag}${prereqTag}${warnTag}${pnapRef}</div>
+          </div>
+          <div class="concession-area">${c.effective_gfa_m2.toFixed(2)} m²</div>
+        </div>`;
+    }).join('');
   } else {
     concSection.style.display = 'none';
   }
@@ -1187,6 +1523,9 @@ function renderResults(data, isDemo) {
                     : r.gfa_rule === 'half' ? 'half' : 'cond';
     const warn = r.gfa_note && r.gfa_note.includes('⚠️')
       ? `<div class="td-warn">⚠ Review</div>` : '';
+    const itemCell = r.item_no
+      ? `<span class="item-no-badge small">Item ${r.item_no}</span>`
+      : (r.concession ? `<span style="font-size:10px;color:var(--muted)">${r.concession}</span>` : '—');
     return `
       <tr>
         <td class="td-label">${r.label}${warn}</td>
@@ -1195,11 +1534,11 @@ function renderResults(data, isDemo) {
         <td><span class="td-rule ${ruleClass}">${r.gfa_rule}</span></td>
         <td>${r.gfa_m2.toFixed(2)}</td>
         <td>${r.nofa_m2.toFixed(2)}</td>
-        <td style="font-size:10px;color:var(--muted)">${r.concession || '—'}</td>
+        <td>${itemCell}</td>
       </tr>`;
   }).join('');
 
-  // Download button
+  // Download Excel button
   const dlBtn = document.getElementById('btn-download');
   if (data.download_url) {
     dlBtn.href = `${API_BASE}${data.download_url}`;
@@ -1207,6 +1546,12 @@ function renderResults(data, isDemo) {
   } else {
     dlBtn.style.display = 'none';
   }
+
+  // Reset annotated PDF button (will be populated by _doAnnotate)
+  const pdfBtn = document.getElementById('btn-download-pdf');
+  pdfBtn.style.display = 'none';
+  pdfBtn.style.color = '';
+  pdfBtn.style.borderColor = '';
 
   // Show results
   resultsEl.classList.add('visible');
@@ -1233,6 +1578,14 @@ function validateCustomScale(input) {
   const v = parseInt(input.value, 10);
   input.style.borderColor = (!v || v < 1 || v > 9999) ? 'var(--danger)' : 'var(--accent2)';
 }
+
+// ── Modal keyboard shortcuts ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  const modal = document.getElementById('scale-modal');
+  if (!modal.classList.contains('visible')) return;
+  if (e.key === 'Enter')  confirmScale();
+  if (e.key === 'Escape') cancelModal();
+});
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 checkHealth();
