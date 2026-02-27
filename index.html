@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AreaCalc HK — Floor Plan Area Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset & Variables ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:      #0a0f1a;
+  --paper:    #f5f2eb;
+  --accent:   #d4520a;
+  --accent2:  #1a5c8a;
+  --muted:    #7a7469;
+  --rule:     #d0cab8;
+  --success:  #2a6b3a;
+  --warn:     #a85000;
+  --danger:   #b01a1a;
+  --card-bg:  #fdfbf7;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Grid lines background ──────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(10,15,26,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10,15,26,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+header {
+  position: relative; z-index: 10;
+  border-bottom: 2px solid var(--ink);
+  padding: 0 48px;
+  display: flex; align-items: stretch; justify-content: space-between;
+  background: var(--ink);
+}
+
+.header-logo {
+  padding: 20px 0;
+  display: flex; align-items: center; gap: 14px;
+}
+
+.logo-mark {
+  width: 38px; height: 38px;
+  background: var(--accent);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px;
+  flex-shrink: 0;
+}
+.logo-mark span {
+  background: var(--paper);
+  display: block;
+}
+.logo-mark span:nth-child(3) { background: transparent; border: 1.5px solid var(--paper); }
+
+.logo-text {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
+  color: var(--paper);
+}
+.logo-text em {
+  font-style: normal; color: var(--accent);
+}
+
+.header-meta {
+  display: flex; align-items: center; gap: 32px;
+  padding: 0;
+}
+
+.header-badge {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+  color: rgba(245,242,235,0.5);
+  border-left: 1px solid rgba(245,242,235,0.15);
+  padding-left: 24px;
+  line-height: 1.6;
+}
+
+.status-dot {
+  display: inline-block; width: 7px; height: 7px;
+  border-radius: 50%; background: #4ade80;
+  margin-right: 6px;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Main layout ────────────────────────────────────────────────────────── */
+main {
+  position: relative; z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 48px 80px;
+}
+
+/* ── Page title ─────────────────────────────────────────────────────────── */
+.page-title {
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 32px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+}
+
+.page-title h1 {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+}
+
+.page-title h1 span {
+  display: block;
+  color: var(--accent);
+}
+
+.spec-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.8;
+}
+.spec-tag strong { color: var(--ink); font-weight: 500; }
+
+/* ── Two-column grid ────────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 32px;
+  align-items: start;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border: 1.5px solid var(--rule);
+  border-radius: 2px;
+}
+
+.card-header {
+  padding: 16px 24px;
+  border-bottom: 1.5px solid var(--rule);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.card-header h2 {
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--ink);
+}
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
+}
+
+.card-body { padding: 24px; }
+
+/* ── Upload zone ────────────────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--rule);
+  border-radius: 2px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(212,82,10,0.02) 10px,
+    rgba(212,82,10,0.02) 20px
+  );
+}
+
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(212,82,10,0.04);
+}
+
+.upload-zone.has-file {
+  border-style: solid;
+  border-color: var(--accent2);
+  background: rgba(26,92,138,0.04);
+}
+
+.upload-icon {
+  width: 52px; height: 52px;
+  margin: 0 auto 16px;
+  display: grid; place-items: center;
+  border: 2px solid var(--rule);
+  background: var(--paper);
+  position: relative;
+}
+
+.upload-icon::before {
+  content: '';
+  position: absolute; inset: -6px;
+  border: 1px dashed var(--rule);
+}
+
+.upload-icon svg { width: 24px; height: 24px; stroke: var(--muted); }
+
+.upload-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 6px;
+}
+
+.upload-sub {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--muted); letter-spacing: 0.3px;
+}
+
+.upload-formats {
+  margin-top: 16px;
+  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+}
+
+.fmt-tag {
+  font-family: var(--mono);
+  font-size: 10px; padding: 3px 8px;
+  background: var(--ink); color: var(--paper);
+  letter-spacing: 0.5px;
+}
+
+#file-input { display: none; }
+
+/* File selected state */
+.file-selected {
+  display: none;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--accent2);
+  background: rgba(26,92,138,0.06);
+  text-align: left;
+  align-items: center; gap: 12px;
+}
+
+.file-selected.visible { display: flex; }
+
+.file-icon {
+  width: 32px; height: 36px;
+  background: var(--accent2);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.file-icon svg { width: 18px; height: 18px; stroke: white; }
+
+.file-name {
+  font-family: var(--mono);
+  font-size: 12px; font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-size { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.file-remove {
+  margin-left: auto; flex-shrink: 0;
+  background: none; border: 1.5px solid var(--rule);
+  width: 28px; height: 28px; cursor: pointer;
+  display: grid; place-items: center;
+  color: var(--muted); transition: all 0.15s;
+}
+.file-remove:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Form controls ──────────────────────────────────────────────────────── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-group label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.form-group input,
+.form-group select {
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 0;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--accent2);
+}
+
+.select-wrap { position: relative; }
+.select-wrap::after {
+  content: '▾';
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; color: var(--muted); font-size: 12px;
+}
+
+.checkbox-row {
+  margin-top: 16px;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+}
+.checkbox-row input[type=checkbox] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.checkbox-row span {
+  font-size: 12px; color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* ── Submit button ──────────────────────────────────────────────────────── */
+.btn-analyse {
+  margin-top: 24px;
+  width: 100%;
+  padding: 16px;
+  font-family: var(--sans);
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: none; cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: all 0.2s;
+}
+
+.btn-analyse::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; background: var(--accent);
+}
+
+.btn-analyse:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.btn-analyse:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+
+.btn-analyse .spinner {
+  display: none;
+  width: 16px; height: 16px;
+  border: 2px solid rgba(245,242,235,0.3);
+  border-top-color: var(--paper);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-left: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-analyse.loading .spinner { display: inline-block; }
+.btn-analyse.loading .btn-text::after { content: 'Analysing...'; }
+.btn-analyse:not(.loading) .btn-text::after { content: 'Analyse Floor Plan'; }
+.btn-analyse .btn-text { font-size: 0; }
+.btn-analyse .btn-text::after { font-size: 14px; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+.sidebar { display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Config panel ───────────────────────────────────────────────────────── */
+.config-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.config-item:last-child { border-bottom: none; }
+
+.config-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--muted);
+}
+.config-value {
+  font-family: var(--mono);
+  font-size: 12px; color: var(--ink);
+}
+
+/* ── Rules panel ────────────────────────────────────────────────────────── */
+.rule-list { display: flex; flex-direction: column; gap: 0; }
+
+.rule-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px; align-items: center;
+  font-size: 12px;
+}
+.rule-item:last-child { border-bottom: none; }
+
+.rule-name { color: var(--ink); font-weight: 600; font-size: 11px; }
+
+.rule-badge {
+  font-family: var(--mono);
+  font-size: 9px; padding: 2px 6px;
+  letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500;
+}
+.badge-full    { background: #e8f5e9; color: var(--success); }
+.badge-half    { background: #fff3e0; color: var(--warn); }
+.badge-excl    { background: #fce4e4; color: var(--danger); }
+.badge-cond    { background: #e8eaf6; color: #3949ab; }
+.badge-cap     { background: var(--ink); color: var(--paper); }
+
+/* ── Results panel ──────────────────────────────────────────────────────── */
+#results { display: none; }
+#results.visible { display: block; }
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5px;
+  background: var(--rule);
+  margin-bottom: 24px;
+}
+
+.metric-cell {
+  background: var(--card-bg);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.metric-cell::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+.metric-cell.gfa::before    { background: var(--accent2); }
+.metric-cell.nofa::before   { background: var(--accent); }
+.metric-cell.ratio::before  { background: var(--success); }
+
+.metric-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+.metric-value {
+  font-size: 28px; font-weight: 800;
+  letter-spacing: -1px; line-height: 1;
+}
+.metric-unit {
+  font-family: var(--mono);
+  font-size: 11px; color: var(--muted); margin-top: 4px;
+}
+
+/* ── Room table ─────────────────────────────────────────────────────────── */
+.room-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.room-table th {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--paper);
+  border-bottom: 2px solid var(--ink);
+}
+
+.room-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.room-table tr:last-child td { border-bottom: none; }
+
+.room-table tr:hover td { background: rgba(212,82,10,0.03); }
+
+.room-table .td-label {
+  font-family: var(--sans);
+  font-weight: 600; font-size: 12px;
+  font-family: inherit;
+}
+
+.td-floor {
+  color: var(--muted);
+}
+
+.td-rule {
+  text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.td-rule.full  { color: var(--success); }
+.td-rule.excl  { color: var(--danger); }
+.td-rule.half  { color: var(--warn); }
+.td-rule.cond  { color: #3949ab; }
+
+.td-warn { color: var(--danger); font-size: 10px; }
+
+/* ── Cap bar ────────────────────────────────────────────────────────────── */
+.cap-section {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1.5px solid var(--rule);
+  background: var(--card-bg);
+}
+
+.cap-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.cap-title {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+}
+
+.cap-pct {
+  font-family: var(--mono);
+  font-size: 14px; font-weight: 500;
+}
+.cap-pct.over { color: var(--danger); }
+
+.cap-track {
+  height: 8px; background: var(--rule); position: relative;
+}
+.cap-fill {
+  height: 100%; background: var(--accent2);
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+.cap-fill.over { background: var(--danger); }
+.cap-fill::after {
+  content: '';
+  position: absolute; right: 0; top: -3px; bottom: -3px;
+  width: 2px; background: inherit;
+}
+
+/* ── Warnings ───────────────────────────────────────────────────────────── */
+.warnings-list {
+  margin-top: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.warning-item {
+  padding: 10px 14px;
+  background: rgba(168,80,0,0.06);
+  border-left: 3px solid var(--warn);
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--warn);
+  line-height: 1.5;
+}
+
+/* ── Download button ────────────────────────────────────────────────────── */
+.btn-download {
+  margin-top: 20px;
+  width: 100%;
+  padding: 14px;
+  font-family: var(--sans);
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: transparent;
+  color: var(--accent2);
+  border: 2px solid var(--accent2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.btn-download:hover {
+  background: var(--accent2); color: var(--paper);
+}
+.btn-download svg { width: 16px; height: 16px; stroke: currentColor; }
+
+/* ── Error state ────────────────────────────────────────────────────────── */
+.error-box {
+  display: none;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1.5px solid var(--danger);
+  background: rgba(176,26,26,0.05);
+}
+.error-box.visible { display: block; }
+.error-box p {
+  font-family: var(--mono);
+  font-size: 12px; color: var(--danger); line-height: 1.5;
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1.5px solid var(--rule);
+  padding: 20px 48px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.footer-left {
+  font-family: var(--mono);
+  font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
+}
+.footer-right {
+  font-family: var(--mono);
+  font-size: 10px; color: var(--muted);
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  header, main, footer { padding-left: 24px; padding-right: 24px; }
+  .layout { grid-template-columns: 1fr; }
+  .results-grid { grid-template-columns: 1fr 1fr; }
+  .page-title { flex-direction: column; gap: 12px; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="header-logo">
+    <div class="logo-mark">
+      <span></span><span></span>
+      <span></span><span></span>
+    </div>
+    <div class="logo-text">Area<em>Calc</em> HK</div>
+  </div>
+  <div class="header-meta">
+    <div class="header-badge">
+      <span class="status-dot"></span>API Connected<br>
+      PNAP APP-2 & APP-151
+    </div>
+    <div class="header-badge">
+      Spec v1.1<br>
+      Rev. Jul 2025
+    </div>
+  </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────── -->
+<main>
+
+  <div class="page-title">
+    <h1>
+      Floor Plan<br>
+      <span>Area Calculator</span>
+    </h1>
+    <div class="spec-tag">
+      <strong>GFA · UFA · NOFA</strong><br>
+      Hong Kong Buildings Ordinance<br>
+      B(P)R 23 · PNAP APP-2 · APP-151
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ── Left: Upload + Results ──────────────────────────────────────── -->
+    <div>
+
+      <!-- Upload card -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Upload Floor Plan</h2>
+          <span class="card-label">Single floor analysis</span>
+        </div>
+        <div class="card-body">
+
+          <!-- Drop zone -->
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" accept=".dxf,.pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp"/>
+            <div class="upload-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <div class="upload-title">Drop floor plan here</div>
+            <div class="upload-sub">or click to browse</div>
+            <div class="upload-formats">
+              <span class="fmt-tag">DXF</span>
+              <span class="fmt-tag">PDF</span>
+              <span class="fmt-tag">JPG</span>
+              <span class="fmt-tag">PNG</span>
+              <span class="fmt-tag">TIF</span>
+            </div>
+          </div>
+
+          <!-- File selected indicator -->
+          <div class="file-selected" id="file-selected">
+            <div class="file-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            </div>
+            <div>
+              <div class="file-name" id="file-name-text"></div>
+              <div class="file-size" id="file-size-text"></div>
+            </div>
+            <button class="file-remove" id="file-remove" title="Remove file">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Form controls -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Building Type</label>
+              <div class="select-wrap">
+                <select id="building-type">
+                  <option value="residential">Residential</option>
+                  <option value="non_domestic">Non-Domestic</option>
+                  <option value="composite">Composite</option>
+                  <option value="hotel">Hotel</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Floor Label</label>
+              <input type="text" id="floor-label" value="3/F" placeholder="e.g. 3/F"/>
+            </div>
+            <div class="form-group">
+              <label>Project Name</label>
+              <input type="text" id="project-name" placeholder="Tower A"/>
+            </div>
+            <div class="form-group">
+              <label>Drawing Scale</label>
+              <div class="select-wrap">
+                <select id="draw-scale">
+                  <option value="100" selected>1:100</option>
+                  <option value="50">1:50</option>
+                  <option value="200">1:200</option>
+                  <option value="500">1:500</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="export-excel" checked/>
+            <span>Generate Excel area schedule (.xlsx)</span>
+          </label>
+
+          <!-- Error box -->
+          <div class="error-box" id="error-box">
+            <p id="error-text"></p>
+          </div>
+
+          <!-- Submit -->
+          <button class="btn-analyse" id="btn-analyse" disabled>
+            <span class="btn-text"></span>
+            <span class="spinner"></span>
+          </button>
+
+        </div>
+      </div>
+
+      <!-- Results (hidden until analysis) -->
+      <div id="results" style="margin-top:32px;">
+        <div class="card animate-in">
+          <div class="card-header">
+            <h2>Area Report</h2>
+            <span class="card-label" id="results-meta"></span>
+          </div>
+          <div class="card-body">
+
+            <!-- Key metrics -->
+            <div class="results-grid">
+              <div class="metric-cell gfa">
+                <div class="metric-label">Gross Floor Area</div>
+                <div class="metric-value" id="m-gfa">—</div>
+                <div class="metric-unit">m²</div>
+              </div>
+              <div class="metric-cell nofa">
+                <div class="metric-label">Net Op. Floor Area</div>
+                <div class="metric-value" id="m-nofa">—</div>
+                <div class="metric-unit">m²</div>
+              </div>
+              <div class="metric-cell ratio">
+                <div class="metric-label">NOFA / GFA</div>
+                <div class="metric-value" id="m-ratio">—</div>
+                <div class="metric-unit">efficiency ratio</div>
+              </div>
+            </div>
+
+            <!-- APP-151 cap -->
+            <div class="cap-section">
+              <div class="cap-header">
+                <div class="cap-title">APP-151 10% Cap Utilisation</div>
+                <div class="cap-pct" id="cap-pct">0%</div>
+              </div>
+              <div class="cap-track">
+                <div class="cap-fill" id="cap-fill" style="width:0%"></div>
+              </div>
+            </div>
+
+            <!-- Warnings -->
+            <div class="warnings-list" id="warnings-list"></div>
+
+            <!-- Room table -->
+            <div style="margin-top:24px; overflow-x:auto;">
+              <table class="room-table">
+                <thead>
+                  <tr>
+                    <th>Room</th>
+                    <th>Floor</th>
+                    <th>Area m²</th>
+                    <th>GFA Rule</th>
+                    <th>GFA m²</th>
+                    <th>NOFA m²</th>
+                    <th>Concession</th>
+                  </tr>
+                </thead>
+                <tbody id="room-tbody"></tbody>
+              </table>
+            </div>
+
+            <!-- Download -->
+            <a class="btn-download" id="btn-download" href="#" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download Excel Area Schedule
+            </a>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Right: Sidebar ──────────────────────────────────────────────── -->
+    <div class="sidebar">
+
+      <!-- Classification rules reference -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Classification Rules</h2>
+          <span class="card-label">APP-2 & APP-151</span>
+        </div>
+        <div class="card-body" style="padding-top:8px;">
+          <div class="rule-list" id="rule-list">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:12px 0;">
+              Loading rules…
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Building type info -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Building Type Notes</h2>
+          <span class="card-label">APP-151</span>
+        </div>
+        <div class="card-body">
+          <div class="config-item">
+            <div class="config-label">Balcony Rule</div>
+            <div class="config-value">50% → GFA</div>
+          </div>
+          <div class="config-item">
+            <div class="config-label">10% Cap</div>
+            <div class="config-value">Non-mandatory items</div>
+          </div>
+          <div class="config-item">
+            <div class="config-label">BEAM Plus</div>
+            <div class="config-value">Most concessions</div>
+          </div>
+          <div class="config-item">
+            <div class="config-label">Spec Version</div>
+            <div class="config-value">APP-151 Jul 2025</div>
+          </div>
+          <div class="config-item" style="border:none">
+            <div class="config-label">Pending Review</div>
+            <div class="config-value" style="color:var(--warn)">AP/QS sign-off</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<!-- ── Footer ──────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="footer-left">
+    AreaCalc HK · PNAP APP-2 & APP-151 (Rev. Jul 2025) · v1.0.0
+  </div>
+  <div class="footer-right">
+    Rules pending AP/QS confirmation · Not for BD submission without sign-off
+  </div>
+</footer>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:5000';  // Update to your deployed API URL
+
+// ── DOM refs ────────────────────────────────────────────────────────────────
+const dropZone     = document.getElementById('drop-zone');
+const fileInput    = document.getElementById('file-input');
+const fileSelected = document.getElementById('file-selected');
+const fileNameEl   = document.getElementById('file-name-text');
+const fileSizeEl   = document.getElementById('file-size-text');
+const fileRemove   = document.getElementById('file-remove');
+const btnAnalyse   = document.getElementById('btn-analyse');
+const errorBox     = document.getElementById('error-box');
+const errorText    = document.getElementById('error-text');
+const resultsEl    = document.getElementById('results');
+const ruleList     = document.getElementById('rule-list');
+
+let selectedFile = null;
+
+// ── File helpers ─────────────────────────────────────────────────────────────
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function setFile(file) {
+  selectedFile = file;
+  fileNameEl.textContent = file.name;
+  fileSizeEl.textContent = formatBytes(file.size);
+  fileSelected.classList.add('visible');
+  dropZone.classList.add('has-file');
+  btnAnalyse.disabled = false;
+  clearError();
+}
+
+function clearFile() {
+  selectedFile = null;
+  fileInput.value = '';
+  fileSelected.classList.remove('visible');
+  dropZone.classList.remove('has-file');
+  btnAnalyse.disabled = true;
+}
+
+function showError(msg) {
+  errorText.textContent = msg;
+  errorBox.classList.add('visible');
+}
+function clearError() {
+  errorBox.classList.remove('visible');
+}
+
+// ── Drag & drop ──────────────────────────────────────────────────────────────
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) setFile(e.target.files[0]);
+});
+fileRemove.addEventListener('click', e => { e.stopPropagation(); clearFile(); });
+
+// ── Load rules from API ──────────────────────────────────────────────────────
+async function loadRules() {
+  try {
+    const res  = await fetch(`${API_BASE}/api/rules`);
+    const data = await res.json();
+    renderRules(data.rules);
+  } catch {
+    ruleList.innerHTML = '<div style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:8px 0;">API offline — rules unavailable</div>';
+  }
+}
+
+function renderRules(rules) {
+  const seen = new Set();
+  ruleList.innerHTML = rules.map(r => {
+    if (seen.has(r.label)) return '';
+    seen.add(r.label);
+    const gfaClass = r.gfa_rule === 'full' ? 'full'
+                   : r.gfa_rule === 'half' ? 'half'
+                   : r.gfa_rule === 'excluded' ? 'excl' : 'cond';
+    const capBadge = r.subject_to_cap
+      ? `<span class="rule-badge badge-cap">Cap</span>` : '';
+    return `
+      <div class="rule-item">
+        <div class="rule-name">${r.label}</div>
+        <span class="rule-badge badge-${gfaClass}">${r.gfa_rule}</span>
+        ${capBadge}
+      </div>`;
+  }).join('');
+}
+
+// ── Analyse ──────────────────────────────────────────────────────────────────
+btnAnalyse.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  const buildingType = document.getElementById('building-type').value;
+  const floorLabel   = document.getElementById('floor-label').value || '—';
+  const projectName  = document.getElementById('project-name').value || 'Floor Plan';
+  const scale        = document.getElementById('draw-scale').value;
+  const exportExcel  = document.getElementById('export-excel').checked;
+
+  // UI: loading state
+  btnAnalyse.disabled = true;
+  btnAnalyse.classList.add('loading');
+  clearError();
+  resultsEl.classList.remove('visible');
+
+  const form = new FormData();
+  form.append('file',          selectedFile);
+  form.append('building_type', buildingType);
+  form.append('floor',         floorLabel);
+  form.append('project_name',  projectName);
+  form.append('scale',         scale);
+  form.append('export_excel',  exportExcel ? 'true' : 'false');
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/analyse`, { method: 'POST', body: form });
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      showError(data.error || `Server error (${res.status})`);
+    } else {
+      renderResults(data);
+    }
+  } catch (e) {
+    showError(`Could not reach API at ${API_BASE}. Make sure the backend is running (python api.py).`);
+  } finally {
+    btnAnalyse.disabled = false;
+    btnAnalyse.classList.remove('loading');
+  }
+});
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResults(data) {
+  // Metrics
+  document.getElementById('m-gfa').textContent   = data.total_gfa_m2.toFixed(1);
+  document.getElementById('m-nofa').textContent  = data.total_nofa_m2.toFixed(1);
+  document.getElementById('m-ratio').textContent = (data.nofa_gfa_ratio * 100).toFixed(1) + '%';
+  document.getElementById('results-meta').textContent =
+    `${data.rooms_parsed} rooms · ${data.building_type} · ${data.floor || '—'}`;
+
+  // Cap bar
+  const capPct  = Math.min(data.cap_utilisation_pct, 100);
+  const capEl   = document.getElementById('cap-fill');
+  const capText = document.getElementById('cap-pct');
+  capEl.style.width = capPct + '%';
+  capText.textContent = data.cap_utilisation_pct.toFixed(1) + '%';
+  if (data.cap_exceeded) {
+    capEl.classList.add('over');
+    capText.classList.add('over');
+  }
+
+  // Warnings
+  const warnList = document.getElementById('warnings-list');
+  warnList.innerHTML = (data.warnings || []).map(w =>
+    `<div class="warning-item">⚠ ${w}</div>`
+  ).join('');
+
+  // Room table
+  const tbody = document.getElementById('room-tbody');
+  tbody.innerHTML = (data.rooms || []).map(r => {
+    const ruleClass = r.gfa_rule === 'full' ? 'full'
+                    : r.gfa_rule === 'excluded' ? 'excl'
+                    : r.gfa_rule === 'half' ? 'half' : 'cond';
+    const warn = r.gfa_note && r.gfa_note.includes('⚠️')
+      ? `<div class="td-warn">⚠ Review</div>` : '';
+    return `
+      <tr>
+        <td class="td-label">${r.label}${warn}</td>
+        <td class="td-floor">${r.floor}</td>
+        <td>${r.polygon_m2.toFixed(2)}</td>
+        <td><span class="td-rule ${ruleClass}">${r.gfa_rule}</span></td>
+        <td>${r.gfa_m2.toFixed(2)}</td>
+        <td>${r.nofa_m2.toFixed(2)}</td>
+        <td style="font-size:10px;color:var(--muted)">${r.concession || '—'}</td>
+      </tr>`;
+  }).join('');
+
+  // Download button
+  const dlBtn = document.getElementById('btn-download');
+  if (data.download_url) {
+    dlBtn.href = `${API_BASE}${data.download_url}`;
+    dlBtn.style.display = 'flex';
+  } else {
+    dlBtn.style.display = 'none';
+  }
+
+  // Show results panel
+  resultsEl.classList.add('visible');
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadRules();
+</script>
+</body>
+</html>

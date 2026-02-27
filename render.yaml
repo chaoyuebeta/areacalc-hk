@@ -1,0 +1,47 @@
+# render.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Render deployment configuration for AreaCalc HK.
+# Docs: https://render.com/docs/render-yaml
+#
+# To deploy:
+#   1. Push this repo to GitHub
+#   2. Go to https://dashboard.render.com → New → Blueprint
+#   3. Connect your GitHub repo — Render reads this file automatically
+#   4. Click Deploy → live in ~5 minutes
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  - type: web
+    name: areacalc-hk-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+
+    # Free tier — upgrade to Starter ($7/mo) when sharing with clients
+    plan: free
+
+    # Health check — Render pings this to confirm the app is running
+    healthCheckPath: /api/health
+
+    # Environment variables
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: MAX_FILE_MB
+        value: 50
+      - key: UPLOAD_FOLDER
+        value: /tmp/uploads
+      - key: OUTPUT_FOLDER
+        value: /tmp/outputs
+      # Set this to your actual frontend URL once deployed
+      # (used for CORS — update after first deploy)
+      - key: FRONTEND_ORIGIN
+        value: "*"
+
+    # Auto-deploy on every push to main branch
+    autoDeploy: true
+
+    # Render free tier spins down after 15 min of inactivity.
+    # First request after sleep takes ~30s to wake up.
+    # Upgrade to Starter to keep it always-on for clients.
