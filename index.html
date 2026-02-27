@@ -490,6 +490,9 @@ main {
   padding: 16px 24px;
   display: flex; align-items: center; gap: 12px;
 }
+.modal-header-warn {
+  background: #7a2a00 !important;
+}
 .modal-header h3 { font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
 .modal-icon {
   width: 32px; height: 32px; background: var(--accent);
@@ -525,9 +528,7 @@ main {
 .modal-confidence.medium { background: #fff3e0; color: var(--warn); }
 .modal-confidence.low    { background: #fce4e4; color: var(--danger); }
 
-.modal-override {
-  margin-bottom: 8px;
-}
+.modal-override { margin-bottom: 12px; }
 .modal-override label {
   font-size: 11px; font-weight: 700; letter-spacing: 1px;
   text-transform: uppercase; color: var(--muted);
@@ -546,6 +547,45 @@ main {
   outline: none; transition: border-color 0.15s;
 }
 #modal-scale-input:focus { border-color: var(--accent2); }
+#modal-scale-input.required { border-color: var(--danger); }
+
+.modal-input-hint {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  margin-top: 5px; min-height: 14px;
+}
+.modal-input-hint.error { color: var(--danger); }
+
+.modal-quickpick {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap; margin-top: 4px;
+}
+.quickpick-label {
+  font-size: 10px; font-family: var(--mono);
+  color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+}
+.modal-quickpick button {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  padding: 4px 10px; background: var(--bg); color: var(--ink);
+  border: 1.5px solid var(--rule); cursor: pointer;
+  transition: all 0.12s;
+}
+.modal-quickpick button:hover,
+.modal-quickpick button.active {
+  background: var(--accent2); color: white; border-color: var(--accent2);
+}
+
+.scale-detected-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; padding: 4px 10px;
+  background: #e8f5e9; color: var(--success);
+  border: 1px solid #b2dfdb;
+}
+.scale-undetected-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; padding: 4px 10px;
+  background: #fff3e0; color: var(--warn);
+  border: 1px solid #ffe0b2;
+}
 
 .modal-footer {
   padding: 16px 24px;
@@ -717,12 +757,16 @@ footer {
                 <input type="text" id="project-name" placeholder="Tower A"/>
               </div>
               <div class="form-group">
-                <label>Drawing Scale</label>
+                <label>
+                  Drawing Scale
+                  <span class="field-hint" id="scale-hint">Will be auto-detected from file on upload</span>
+                </label>
                 <div class="select-wrap">
                   <select id="draw-scale" onchange="handleScaleChange(this)">
+                    <option value="" selected disabled>— Auto-detect on analyse —</option>
                     <option value="20">1:20</option>
                     <option value="50">1:50</option>
-                    <option value="100" selected>1:100</option>
+                    <option value="100">1:100</option>
                     <option value="150">1:150</option>
                     <option value="200">1:200</option>
                     <option value="250">1:250</option>
@@ -736,6 +780,42 @@ footer {
                   <input type="number" id="custom-scale" min="1" max="9999" placeholder="e.g. 125"
                     style="padding-left:28px;width:100%;"
                     oninput="validateCustomScale(this)"/>
+                </div>
+                <div id="scale-detected-badge" style="display:none;margin-top:6px;"></div>
+              </div>
+
+              <!-- Paper size — shown for JPG/PNG/scanned PDF only -->
+              <div class="form-group" id="paper-size-group" style="display:none">
+                <label>
+                  Paper Size
+                  <span class="field-hint">Required for JPG / scanned PDF to calculate actual dimensions</span>
+                </label>
+                <div class="select-wrap">
+                  <select id="paper-size" onchange="handlePaperSizeChange(this)">
+                    <option value="A1" selected>A1 (594 × 841 mm)</option>
+                    <option value="A0">A0 (841 × 1189 mm)</option>
+                    <option value="A1+">A1+ (625 × 880 mm)</option>
+                    <option value="A2">A2 (420 × 594 mm)</option>
+                    <option value="A3">A3 (297 × 420 mm)</option>
+                    <option value="A4">A4 (210 × 297 mm)</option>
+                    <option value="custom">Custom dimensions…</option>
+                  </select>
+                </div>
+                <div id="custom-paper-wrap" style="display:none;margin-top:6px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div style="position:relative;">
+                      <input type="number" id="paper-width" min="1" placeholder="Width (mm)" style="width:100%;padding-right:36px;"/>
+                      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--muted);">mm</span>
+                    </div>
+                    <div style="position:relative;">
+                      <input type="number" id="paper-height" min="1" placeholder="Height (mm)" style="width:100%;padding-right:36px;"/>
+                      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--muted);">mm</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="field-note" style="margin-top:6px;">
+                  📐 DWG files don't need this — real-world coordinates are used directly.
+                  Vector PDFs don't need this either.
                 </div>
               </div>
             </div>
@@ -994,30 +1074,48 @@ footer {
 <!-- ── Scale Confirm Modal ───────────────────────────────────────────────── -->
 <div class="modal-overlay" id="scale-modal">
   <div class="modal">
-    <div class="modal-header">
+    <div class="modal-header" id="modal-header-detected">
       <div class="modal-icon">📐</div>
       <h3>Confirm Drawing Scale</h3>
     </div>
+    <div class="modal-header modal-header-warn" id="modal-header-notdetected" style="display:none">
+      <div class="modal-icon">⚠️</div>
+      <h3>Scale Not Detected</h3>
+    </div>
+
     <div class="modal-body">
-      <p class="modal-desc" id="modal-desc">
-        We detected a drawing scale from your file. Please confirm it is correct before proceeding.
-      </p>
-      <div class="modal-detected">
+      <p class="modal-desc" id="modal-desc"></p>
+
+      <!-- Detected state: shows detected value + confidence -->
+      <div class="modal-detected" id="modal-detected-block">
         <div class="modal-detected-label">Detected Scale</div>
-        <div class="modal-detected-value" id="modal-scale-display">1:100</div>
+        <div class="modal-detected-value" id="modal-scale-display">—</div>
         <span class="modal-confidence" id="modal-confidence-badge">—</span>
       </div>
+
+      <!-- Input: "override" when detected, "required" when not detected -->
       <div class="modal-override">
-        <label>Override Scale (if incorrect)</label>
+        <label id="modal-input-label">Override scale (if incorrect)</label>
         <div class="modal-override-row">
           <span>1 :</span>
           <input type="number" id="modal-scale-input" min="1" max="9999" placeholder="e.g. 100"/>
         </div>
+        <div class="modal-input-hint" id="modal-input-hint"></div>
+      </div>
+
+      <!-- Quick-pick buttons for common scales -->
+      <div class="modal-quickpick" id="modal-quickpick">
+        <span class="quickpick-label">Common scales:</span>
+        <button onclick="setModalScale(50)">1:50</button>
+        <button onclick="setModalScale(100)">1:100</button>
+        <button onclick="setModalScale(200)">1:200</button>
+        <button onclick="setModalScale(500)">1:500</button>
       </div>
     </div>
+
     <div class="modal-footer">
-      <button class="btn-modal-cancel" onclick="cancelModal()">Cancel Upload</button>
-      <button class="btn-modal-confirm" onclick="confirmScale()">Confirm & Analyse →</button>
+      <button class="btn-modal-cancel" onclick="cancelModal()">Cancel</button>
+      <button class="btn-modal-confirm" id="modal-confirm-btn" onclick="confirmScale()">Confirm & Analyse →</button>
     </div>
   </div>
 </div>
@@ -1076,6 +1174,7 @@ function setFile(file) {
   dropZone.classList.add('has-file');
   btnAnalyse.disabled = false;
   clearError('error-box');
+  updatePaperSizeVisibility(file.name);
 }
 
 function clearFile() {
@@ -1164,10 +1263,8 @@ async function runAnalyse() {
   const buildingType = document.getElementById('building-type').value;
   const floorLabel   = document.getElementById('floor-label').value || '—';
   const projectName  = document.getElementById('project-name').value || 'Floor Plan';
-  const userScale    = getScale();
   const exportExcel  = document.getElementById('export-excel').checked;
-
-  if (!userScale) { showError('error-box', 'Please enter a valid drawing scale (e.g. 1:125).'); return; }
+  const userScale    = getScale();  // null if placeholder "auto-detect" selected
 
   btnAnalyse.disabled = true;
   btnAnalyse.classList.add('loading');
@@ -1176,89 +1273,137 @@ async function runAnalyse() {
   resultsEl.classList.remove('visible');
   isDemoResult = false;
 
-  // ── Step 1: pre-flight scale detection ──────────────────────────────────
-  let detectedScale = userScale;
-  let detectionMethod = 'user_input';
+  // Always run pre-flight detect, then always show modal — never silently proceed
+  let detectedScale   = null;
+  let detectionMethod = 'none';
+  let confidence      = 'low';
 
   try {
     const preForm = new FormData();
-    preForm.append('file', selectedFile);
-    preForm.append('scale', userScale);
+    preForm.append('file',  selectedFile);
+    preForm.append('scale', userScale || 100);
     const preRes  = await fetch(`${API_BASE}/api/detect-scale`, { method: 'POST', body: preForm });
     const preData = await preRes.json();
-
     if (preRes.ok && preData.success) {
-      detectedScale   = preData.scale_to_use;
-      detectionMethod = preData.detection_method;
-
-      // Show confirmation modal
-      _pendingAnalyseParams = { buildingType, floorLabel, projectName, exportExcel };
-      showScaleModal(detectedScale, detectionMethod, preData.confidence, userScale);
-
-      // Modal will call confirmScale() to continue — stop here
-      btnAnalyse.disabled = false;
-      btnAnalyse.classList.remove('loading');
-      btnAnalyse.textContent = '';
-      btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner"></span>';
-      return;
+      detectionMethod = preData.detection_method || 'none';
+      confidence      = preData.confidence || 'low';
+      if (detectionMethod !== 'none') detectedScale = preData.scale_to_use;
     }
-  } catch (e) {
-    // Pre-flight failed — proceed with user scale directly
-    logger.debug?.('Pre-flight detect-scale failed, using user scale');
-  }
+  } catch (e) { /* network error — show not-detected modal */ }
 
-  // ── Step 2: if pre-flight failed, run directly with user scale ───────────
-  btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner"></span>';
-  await _doAnalyse(buildingType, floorLabel, projectName, userScale, exportExcel);
+  _pendingAnalyseParams = { buildingType, floorLabel, projectName, exportExcel };
+  showScaleModal(detectedScale, detectionMethod, confidence, userScale);
+  btnAnalyse.disabled = false;
+  btnAnalyse.classList.remove('loading');
+  btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner" style="display:none"></span>';
 }
 
-function showScaleModal(detectedScale, method, confidence, userScale) {
-  const modal      = document.getElementById('scale-modal');
-  const display    = document.getElementById('modal-scale-display');
-  const badge      = document.getElementById('modal-confidence-badge');
-  const desc       = document.getElementById('modal-desc');
-  const input      = document.getElementById('modal-scale-input');
+function setModalScale(val) {
+  const input = document.getElementById('modal-scale-input');
+  input.value = val;
+  input.classList.remove('required');
+  document.getElementById('modal-input-hint').textContent = '';
+  document.querySelectorAll('.modal-quickpick button').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === `1:${val}`);
+  });
+}
 
-  display.textContent = `1:${detectedScale}`;
-  input.value         = detectedScale;
-  input.placeholder   = detectedScale;
+function showScaleModal(detectedScale, method, confidence, userManualScale) {
+  const modal         = document.getElementById('scale-modal');
+  const display       = document.getElementById('modal-scale-display');
+  const badge         = document.getElementById('modal-confidence-badge');
+  const desc          = document.getElementById('modal-desc');
+  const input         = document.getElementById('modal-scale-input');
+  const detectedBlock = document.getElementById('modal-detected-block');
+  const headerOk      = document.getElementById('modal-header-detected');
+  const headerWarn    = document.getElementById('modal-header-notdetected');
+  const inputLabel    = document.getElementById('modal-input-label');
+  const inputHint     = document.getElementById('modal-input-hint');
+  const confirmBtn    = document.getElementById('modal-confirm-btn');
+  const isDetected    = detectedScale && method !== 'none';
 
-  // Confidence badge
-  badge.className  = `modal-confidence ${confidence}`;
-  badge.textContent = confidence === 'high' ? 'High confidence'
-                    : confidence === 'medium' ? 'Medium confidence'
-                    : 'Low confidence';
+  if (isDetected) {
+    headerOk.style.display      = 'flex';
+    headerWarn.style.display    = 'none';
+    detectedBlock.style.display = 'flex';
 
-  // Description
-  const methodLabel = method === 'text'       ? 'title block text (e.g. "SCALE 1:100")'
-                    : method === 'scale_bar'   ? 'scale bar image analysis'
-                    : 'your manual selection';
-  desc.innerHTML = `Scale <strong>1:${detectedScale}</strong> was detected from <strong>${methodLabel}</strong>.`
-    + (userScale !== detectedScale
-      ? ` Your manual selection was 1:${userScale}.`
-      : '')
-    + ` Please confirm or enter a different value below.`;
+    display.textContent  = `1:${detectedScale}`;
+    badge.className      = `modal-confidence ${confidence}`;
+    badge.textContent    = confidence === 'high'   ? '✓ High confidence'
+                         : confidence === 'medium' ? '~ Medium confidence'
+                         : '⚠ Low confidence';
+
+    const src = method === 'text'      ? 'title block text'
+              : method === 'scale_bar' ? 'scale bar image'
+              : 'file metadata';
+    desc.innerHTML =
+      `Scale <strong>1:${detectedScale}</strong> was read from the <strong>${src}</strong>.`
+      + (confidence !== 'high'
+          ? ` <span style="color:var(--warn)">Confidence is ${confidence} — please verify.</span>`
+          : ' Please confirm this is correct.')
+      + (userManualScale && userManualScale !== detectedScale
+          ? ` (Your manual pre-selection was 1:${userManualScale}.)` : '');
+
+    inputLabel.textContent = 'Use a different scale (optional)';
+    input.value       = detectedScale;
+    input.placeholder = 'Override if incorrect';
+    inputHint.textContent = '';
+    confirmBtn.textContent = 'Confirm & Analyse →';
+
+  } else {
+    headerOk.style.display      = 'none';
+    headerWarn.style.display    = 'flex';
+    detectedBlock.style.display = 'none';
+
+    desc.innerHTML =
+      `No drawing scale could be automatically detected in this file.<br><br>`
+      + `This may be a scanned image, a file without a title block, or a non-standard format. `
+      + `<strong>You must enter the scale manually — without it, all area measurements will be incorrect.</strong>`;
+
+    inputLabel.textContent = '⚠ Enter drawing scale (required)';
+    input.value       = userManualScale || '';
+    input.placeholder = 'e.g. 100  (for 1:100)';
+    input.classList.add('required');
+    inputHint.textContent = 'Check the title block on your drawing for the correct scale.';
+    inputHint.className   = 'modal-input-hint';
+    confirmBtn.textContent = 'Set Scale & Analyse →';
+  }
+
+  // Highlight quickpick if matches
+  const scaleVal = isDetected ? detectedScale : (userManualScale || null);
+  document.querySelectorAll('.modal-quickpick button').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim() === `1:${scaleVal}`);
+  });
 
   modal.classList.add('visible');
   input.focus();
-  input.select();
+  if (isDetected) input.select();
 }
 
 function cancelModal() {
   document.getElementById('scale-modal').classList.remove('visible');
   _pendingAnalyseParams = null;
+  btnAnalyse.disabled = false;
+  btnAnalyse.classList.remove('loading');
+  btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner" style="display:none"></span>';
 }
 
 async function confirmScale() {
-  const input  = document.getElementById('modal-scale-input');
-  const scale  = parseInt(input.value, 10);
+  const input = document.getElementById('modal-scale-input');
+  const hint  = document.getElementById('modal-input-hint');
+  const scale = parseInt(input.value, 10);
+
   if (!scale || scale < 1 || scale > 9999) {
-    input.style.borderColor = 'var(--danger)';
+    input.classList.add('required');
+    hint.textContent = '⚠ Please enter a valid scale between 1 and 9999.';
+    hint.className   = 'modal-input-hint error';
     input.focus();
     return;
   }
-  input.style.borderColor = '';
+
+  input.classList.remove('required');
   document.getElementById('scale-modal').classList.remove('visible');
+  _setScaleSelector(scale);
 
   if (!_pendingAnalyseParams) return;
   const { buildingType, floorLabel, projectName, exportExcel } = _pendingAnalyseParams;
@@ -1269,16 +1414,39 @@ async function confirmScale() {
   await _doAnalyse(buildingType, floorLabel, projectName, scale, exportExcel);
 }
 
+function _setScaleSelector(scale) {
+  const sel    = document.getElementById('draw-scale');
+  const badge  = document.getElementById('scale-detected-badge');
+  const hint   = document.getElementById('scale-hint');
+  if (sel) {
+    const stdOpts = ['20','50','100','150','200','250','500','1000'];
+    if (stdOpts.includes(String(scale))) {
+      sel.value = String(scale);
+      document.getElementById('custom-scale-wrap').style.display = 'none';
+    } else {
+      sel.value = 'custom';
+      document.getElementById('custom-scale-wrap').style.display = 'block';
+      document.getElementById('custom-scale').value = scale;
+    }
+  }
+  if (badge) { badge.style.display = 'inline-flex'; badge.textContent = `✓ Confirmed 1:${scale}`; }
+  if (hint)  hint.textContent = 'Scale confirmed — change above if needed.';
+}
+
 async function _doAnalyse(buildingType, floorLabel, projectName, scale, exportExcel) {
   const annotatePdf = document.getElementById('annotate-pdf')?.checked ?? false;
+  const { paper_size, paper_width_mm, paper_height_mm } = getPaperSize();
 
   const form = new FormData();
-  form.append('file',          selectedFile);
-  form.append('building_type', buildingType);
-  form.append('floor',         floorLabel);
-  form.append('project_name',  projectName);
-  form.append('scale',         scale);
-  form.append('export_excel',  exportExcel ? 'true' : 'false');
+  form.append('file',             selectedFile);
+  form.append('building_type',    buildingType);
+  form.append('floor',            floorLabel);
+  form.append('project_name',     projectName);
+  form.append('scale',            scale);
+  form.append('export_excel',     exportExcel ? 'true' : 'false');
+  form.append('paper_size',       paper_size);
+  form.append('paper_width_mm',   paper_width_mm);
+  form.append('paper_height_mm',  paper_height_mm);
 
   try {
     const res  = await fetch(`${API_BASE}/api/analyse`, { method: 'POST', body: form });
@@ -1558,7 +1726,37 @@ function renderResults(data, isDemo) {
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Scale helpers ─────────────────────────────────────────────────────────────
+.field-hint { display: block; font-size: 10px; color: var(--muted);
+              font-weight: 400; margin-top: 2px; font-family: var(--mono); }
+.field-note { font-size: 10px; color: var(--muted); font-family: var(--mono);
+              line-height: 1.5; }
+
+// ── Paper size helpers ────────────────────────────────────────────────────────
+function handlePaperSizeChange(sel) {
+  document.getElementById('custom-paper-wrap').style.display =
+    sel.value === 'custom' ? 'grid' : 'none';
+}
+function getPaperSize() {
+  const sel = document.getElementById('paper-size');
+  if (!sel) return { paper_size: 'A1', paper_width_mm: 0, paper_height_mm: 0 };
+  return {
+    paper_size:      sel.value,
+    paper_width_mm:  parseFloat(document.getElementById('paper-width')?.value || 0),
+    paper_height_mm: parseFloat(document.getElementById('paper-height')?.value || 0),
+  };
+}
+function updatePaperSizeVisibility(filename) {
+  const group = document.getElementById('paper-size-group');
+  if (!group) return;
+  const ext = (filename.split('.').pop() || '').toLowerCase();
+  const isRaster = ['jpg','jpeg','png','tif','tiff','bmp'].includes(ext);
+  group.style.display = (isRaster || ext === 'pdf') ? 'block' : 'none';
+  const note = group.querySelector('.field-note');
+  if (note) note.textContent = isRaster
+    ? '📐 DWG / vector PDF do not need this — real-world coordinates are used directly.'
+    : '📋 For scanned PDFs only. Vector PDFs will ignore this setting.';
+}
+
 function handleScaleChange(sel) {
   const wrap = document.getElementById('custom-scale-wrap');
   wrap.style.display = sel.value === 'custom' ? 'block' : 'none';
