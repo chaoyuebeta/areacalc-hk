@@ -930,10 +930,7 @@ footer {
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────────
-// API is served from the same origin as the UI
-const API_BASE = window.location.hostname === 'localhost'
-  ? 'http://localhost:5000'
-  : window.location.origin;
+const API_BASE = 'http://localhost:5000';  // Update to your deployed API URL
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 const dropZone     = document.getElementById('drop-zone');
