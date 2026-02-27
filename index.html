@@ -66,367 +66,261 @@ header {
   display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 5px;
   flex-shrink: 0;
 }
-.logo-mark span {
-  background: var(--paper);
-  display: block;
-}
+.logo-mark span { background: var(--paper); display: block; }
 .logo-mark span:nth-child(3) { background: transparent; border: 1.5px solid var(--paper); }
 
-.logo-text {
-  font-size: 22px; font-weight: 800; letter-spacing: -0.5px;
-  color: var(--paper);
-}
-.logo-text em {
-  font-style: normal; color: var(--accent);
-}
+.logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--paper); }
+.logo-text em { font-style: normal; color: var(--accent); }
 
-.header-meta {
-  display: flex; align-items: center; gap: 32px;
-  padding: 0;
-}
+.header-meta { display: flex; align-items: center; gap: 32px; }
 
 .header-badge {
   font-family: var(--mono);
   font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
   color: rgba(245,242,235,0.5);
   border-left: 1px solid rgba(245,242,235,0.15);
-  padding-left: 24px;
-  line-height: 1.6;
+  padding-left: 24px; line-height: 1.6;
 }
 
 .status-dot {
   display: inline-block; width: 7px; height: 7px;
-  border-radius: 50%; background: #4ade80;
-  margin-right: 6px;
+  border-radius: 50%; background: #4ade80; margin-right: 6px;
   animation: pulse 2s ease-in-out infinite;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.status-dot.offline { background: #f87171; animation: none; }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ── Demo Banner ────────────────────────────────────────────────────────── */
+.demo-banner {
+  position: relative; z-index: 5;
+  background: var(--accent);
+  padding: 10px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+}
+.demo-banner-text {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.5px; color: var(--paper);
+  display: flex; align-items: center; gap: 10px;
+}
+.demo-banner-text span {
+  font-family: var(--mono); font-size: 10px;
+  background: rgba(255,255,255,0.2);
+  padding: 2px 8px; letter-spacing: 1px; text-transform: uppercase;
+}
+.demo-banner-actions { display: flex; gap: 12px; align-items: center; }
+.btn-load-demo {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 7px 16px;
+  background: var(--paper); color: var(--accent);
+  border: none; cursor: pointer; transition: all 0.15s;
+}
+.btn-load-demo:hover { background: var(--ink); color: var(--paper); }
+.btn-dismiss-demo {
+  font-family: var(--mono); font-size: 11px;
+  color: rgba(245,242,235,0.7);
+  background: none; border: none; cursor: pointer;
+  text-decoration: underline;
 }
 
 /* ── Main layout ────────────────────────────────────────────────────────── */
 main {
   position: relative; z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
+  max-width: 1200px; margin: 0 auto;
   padding: 56px 48px 80px;
 }
 
-/* ── Page title ─────────────────────────────────────────────────────────── */
 .page-title {
-  margin-bottom: 48px;
-  border-bottom: 1px solid var(--rule);
+  margin-bottom: 48px; border-bottom: 1px solid var(--rule);
   padding-bottom: 32px;
   display: flex; justify-content: space-between; align-items: flex-end;
 }
 
 .page-title h1 {
-  font-size: clamp(32px, 5vw, 52px);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -1.5px;
+  font-size: clamp(32px, 5vw, 52px); font-weight: 800;
+  line-height: 1.05; letter-spacing: -1.5px;
 }
-
-.page-title h1 span {
-  display: block;
-  color: var(--accent);
-}
+.page-title h1 span { display: block; color: var(--accent); }
 
 .spec-tag {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-  text-align: right;
-  line-height: 1.8;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--muted); text-align: right; line-height: 1.8;
 }
 .spec-tag strong { color: var(--ink); font-weight: 500; }
 
 /* ── Two-column grid ────────────────────────────────────────────────────── */
 .layout {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 32px;
-  align-items: start;
+  display: grid; grid-template-columns: 1fr 380px;
+  gap: 32px; align-items: start;
 }
 
 /* ── Card ───────────────────────────────────────────────────────────────── */
-.card {
-  background: var(--card-bg);
-  border: 1.5px solid var(--rule);
-  border-radius: 2px;
-}
+.card { background: var(--card-bg); border: 1.5px solid var(--rule); border-radius: 2px; }
 
 .card-header {
-  padding: 16px 24px;
-  border-bottom: 1.5px solid var(--rule);
+  padding: 16px 24px; border-bottom: 1.5px solid var(--rule);
   display: flex; align-items: center; justify-content: space-between;
 }
-
 .card-header h2 {
   font-size: 13px; font-weight: 700;
-  letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--ink);
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink);
 }
-
-.card-label {
-  font-family: var(--mono);
-  font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
-}
-
+.card-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
 .card-body { padding: 24px; }
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex; border-bottom: 1.5px solid var(--rule);
+  background: var(--paper);
+}
+.tab-btn {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 12px 20px; background: none; border: none;
+  cursor: pointer; color: var(--muted);
+  border-bottom: 2.5px solid transparent; margin-bottom: -1.5px;
+  transition: all 0.15s;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
 
 /* ── Upload zone ────────────────────────────────────────────────────────── */
 .upload-zone {
-  border: 2px dashed var(--rule);
-  border-radius: 2px;
-  padding: 48px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
+  border: 2px dashed var(--rule); border-radius: 2px;
+  padding: 48px 24px; text-align: center; cursor: pointer;
+  transition: all 0.2s; position: relative;
   background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 10px,
-    rgba(212,82,10,0.02) 10px,
-    rgba(212,82,10,0.02) 20px
+    45deg, transparent, transparent 10px,
+    rgba(212,82,10,0.02) 10px, rgba(212,82,10,0.02) 20px
   );
 }
-
-.upload-zone:hover, .upload-zone.dragover {
-  border-color: var(--accent);
-  background: rgba(212,82,10,0.04);
-}
-
-.upload-zone.has-file {
-  border-style: solid;
-  border-color: var(--accent2);
-  background: rgba(26,92,138,0.04);
-}
+.upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: rgba(212,82,10,0.04); }
+.upload-zone.has-file { border-style: solid; border-color: var(--accent2); background: rgba(26,92,138,0.04); }
 
 .upload-icon {
-  width: 52px; height: 52px;
-  margin: 0 auto 16px;
+  width: 52px; height: 52px; margin: 0 auto 16px;
   display: grid; place-items: center;
-  border: 2px solid var(--rule);
-  background: var(--paper);
-  position: relative;
+  border: 2px solid var(--rule); background: var(--paper); position: relative;
 }
-
 .upload-icon::before {
-  content: '';
-  position: absolute; inset: -6px;
+  content: ''; position: absolute; inset: -6px;
   border: 1px dashed var(--rule);
 }
-
 .upload-icon svg { width: 24px; height: 24px; stroke: var(--muted); }
+.upload-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.upload-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.3px; }
 
-.upload-title {
-  font-size: 15px; font-weight: 700; margin-bottom: 6px;
-}
-
-.upload-sub {
-  font-family: var(--mono);
-  font-size: 11px; color: var(--muted); letter-spacing: 0.3px;
-}
-
-.upload-formats {
-  margin-top: 16px;
-  display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
-}
-
+.upload-formats { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .fmt-tag {
-  font-family: var(--mono);
-  font-size: 10px; padding: 3px 8px;
-  background: var(--ink); color: var(--paper);
-  letter-spacing: 0.5px;
+  font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+  background: var(--ink); color: var(--paper); letter-spacing: 0.5px;
 }
 
 #file-input { display: none; }
 
-/* File selected state */
 .file-selected {
-  display: none;
-  margin-top: 20px;
-  padding: 12px 16px;
-  border: 1.5px solid var(--accent2);
-  background: rgba(26,92,138,0.06);
-  text-align: left;
-  align-items: center; gap: 12px;
+  display: none; margin-top: 20px; padding: 12px 16px;
+  border: 1.5px solid var(--accent2); background: rgba(26,92,138,0.06);
+  text-align: left; align-items: center; gap: 12px;
 }
-
 .file-selected.visible { display: flex; }
 
-.file-icon {
-  width: 32px; height: 36px;
-  background: var(--accent2);
-  display: grid; place-items: center; flex-shrink: 0;
-}
+.file-icon { width: 32px; height: 36px; background: var(--accent2); display: grid; place-items: center; flex-shrink: 0; }
 .file-icon svg { width: 18px; height: 18px; stroke: white; }
-
-.file-name {
-  font-family: var(--mono);
-  font-size: 12px; font-weight: 500;
-  color: var(--ink);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
+.file-name { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .file-size { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
 .file-remove {
   margin-left: auto; flex-shrink: 0;
   background: none; border: 1.5px solid var(--rule);
   width: 28px; height: 28px; cursor: pointer;
-  display: grid; place-items: center;
-  color: var(--muted); transition: all 0.15s;
+  display: grid; place-items: center; color: var(--muted); transition: all 0.15s;
 }
 .file-remove:hover { border-color: var(--danger); color: var(--danger); }
 
 /* ── Form controls ──────────────────────────────────────────────────────── */
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 20px;
-}
-
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; }
-
-.form-group label {
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase;
-  color: var(--muted);
-}
+.form-group label { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
 
 .form-group input,
 .form-group select {
-  font-family: var(--mono);
-  font-size: 13px;
-  padding: 10px 12px;
-  border: 1.5px solid var(--rule);
-  background: var(--paper);
-  color: var(--ink);
-  border-radius: 0;
-  outline: none;
-  transition: border-color 0.15s;
-  appearance: none;
-  -webkit-appearance: none;
+  font-family: var(--mono); font-size: 13px; padding: 10px 12px;
+  border: 1.5px solid var(--rule); background: var(--paper); color: var(--ink);
+  border-radius: 0; outline: none; transition: border-color 0.15s;
+  appearance: none; -webkit-appearance: none;
 }
-
-.form-group input:focus,
-.form-group select:focus {
-  border-color: var(--accent2);
-}
+.form-group input:focus, .form-group select:focus { border-color: var(--accent2); }
 
 .select-wrap { position: relative; }
-.select-wrap::after {
-  content: '▾';
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  pointer-events: none; color: var(--muted); font-size: 12px;
-}
+.select-wrap::after { content: '▾'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted); font-size: 12px; }
 
-.checkbox-row {
-  margin-top: 16px;
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer;
+.checkbox-row { margin-top: 16px; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.checkbox-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.checkbox-row span { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+/* ── Manual JSON input ──────────────────────────────────────────────────── */
+.manual-help {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  margin-bottom: 12px; line-height: 1.6;
+  padding: 12px; background: rgba(10,15,26,0.03);
+  border-left: 3px solid var(--rule);
 }
-.checkbox-row input[type=checkbox] {
-  width: 16px; height: 16px;
-  accent-color: var(--accent);
-  cursor: pointer;
+.manual-help code { background: rgba(10,15,26,0.07); padding: 1px 4px; border-radius: 2px; }
+
+#json-input {
+  width: 100%; font-family: var(--mono); font-size: 11px;
+  padding: 14px; border: 1.5px solid var(--rule);
+  background: #fafaf8; color: var(--ink); border-radius: 0;
+  outline: none; resize: vertical; min-height: 220px;
+  line-height: 1.7; transition: border-color 0.15s;
 }
-.checkbox-row span {
-  font-size: 12px; color: var(--muted);
-  font-family: var(--mono);
-}
+#json-input:focus { border-color: var(--accent2); }
 
 /* ── Submit button ──────────────────────────────────────────────────────── */
 .btn-analyse {
-  margin-top: 24px;
-  width: 100%;
-  padding: 16px;
-  font-family: var(--sans);
-  font-size: 14px; font-weight: 700;
+  margin-top: 24px; width: 100%; padding: 16px;
+  font-family: var(--sans); font-size: 14px; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase;
-  background: var(--ink);
-  color: var(--paper);
-  border: none; cursor: pointer;
-  position: relative; overflow: hidden;
-  transition: all 0.2s;
+  background: var(--ink); color: var(--paper);
+  border: none; cursor: pointer; position: relative; overflow: hidden;
+  transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-
 .btn-analyse::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0;
   width: 4px; background: var(--accent);
 }
-
-.btn-analyse:hover:not(:disabled) {
-  background: var(--accent);
-}
-
-.btn-analyse:disabled {
-  opacity: 0.45; cursor: not-allowed;
-}
-
-.btn-analyse .spinner {
-  display: none;
-  width: 16px; height: 16px;
-  border: 2px solid rgba(245,242,235,0.3);
-  border-top-color: var(--paper);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  margin-left: 10px;
+.btn-analyse:hover:not(:disabled) { background: var(--accent); }
+.btn-analyse:disabled { opacity: 0.45; cursor: not-allowed; }
+.spinner {
+  display: none; width: 16px; height: 16px;
+  border: 2px solid rgba(245,242,235,0.3); border-top-color: var(--paper);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .btn-analyse.loading .spinner { display: inline-block; }
-.btn-analyse.loading .btn-text::after { content: 'Analysing...'; }
-.btn-analyse:not(.loading) .btn-text::after { content: 'Analyse Floor Plan'; }
-.btn-analyse .btn-text { font-size: 0; }
-.btn-analyse .btn-text::after { font-size: 14px; }
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar { display: flex; flex-direction: column; gap: 20px; }
 
-/* ── Config panel ───────────────────────────────────────────────────────── */
-.config-item {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--rule);
-  display: flex; justify-content: space-between; align-items: center;
-}
+.config-item { padding: 14px 0; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; }
 .config-item:last-child { border-bottom: none; }
+.config-label { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted); }
+.config-value { font-family: var(--mono); font-size: 12px; color: var(--ink); }
 
-.config-label {
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.8px; text-transform: uppercase;
-  color: var(--muted);
-}
-.config-value {
-  font-family: var(--mono);
-  font-size: 12px; color: var(--ink);
-}
-
-/* ── Rules panel ────────────────────────────────────────────────────────── */
-.rule-list { display: flex; flex-direction: column; gap: 0; }
-
+.rule-list { display: flex; flex-direction: column; gap: 0; max-height: 320px; overflow-y: auto; }
 .rule-item {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--rule);
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px; align-items: center;
-  font-size: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--rule);
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 8px; align-items: center; font-size: 12px;
 }
 .rule-item:last-child { border-bottom: none; }
-
 .rule-name { color: var(--ink); font-weight: 600; font-size: 11px; }
-
-.rule-badge {
-  font-family: var(--mono);
-  font-size: 9px; padding: 2px 6px;
-  letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500;
-}
+.rule-badge { font-family: var(--mono); font-size: 9px; padding: 2px 6px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 500; }
 .badge-full    { background: #e8f5e9; color: var(--success); }
 .badge-half    { background: #fff3e0; color: var(--warn); }
 .badge-excl    { background: #fce4e4; color: var(--danger); }
@@ -438,208 +332,144 @@ main {
 #results.visible { display: block; }
 
 .results-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1.5px;
-  background: var(--rule);
-  margin-bottom: 24px;
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5px; background: var(--rule); margin-bottom: 24px;
 }
 
-.metric-cell {
-  background: var(--card-bg);
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-.metric-cell::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px;
-}
+.metric-cell { background: var(--card-bg); padding: 20px 24px; position: relative; overflow: hidden; }
+.metric-cell::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
 .metric-cell.gfa::before    { background: var(--accent2); }
 .metric-cell.nofa::before   { background: var(--accent); }
 .metric-cell.ratio::before  { background: var(--success); }
 
-.metric-label {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: 1.5px; text-transform: uppercase;
-  color: var(--muted); margin-bottom: 8px;
+.metric-label { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.metric-value { font-size: 32px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+.metric-unit { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── Cap bar ────────────────────────────────────────────────────────────── */
+.cap-section { margin-top: 0; padding: 20px; border: 1.5px solid var(--rule); background: var(--card-bg); margin-bottom: 0; }
+.cap-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.cap-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.cap-pct { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+.cap-pct.over { color: var(--danger); }
+.cap-track { height: 8px; background: var(--rule); position: relative; }
+.cap-fill { height: 100%; background: var(--accent2); transition: width 1s cubic-bezier(0.16, 1, 0.3, 1); position: relative; }
+.cap-fill.over { background: var(--danger); }
+.cap-fill::after { content: ''; position: absolute; right: 0; top: -3px; bottom: -3px; width: 2px; background: inherit; }
+.cap-sublabel { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; }
+
+/* ── Concessions panel ──────────────────────────────────────────────────── */
+.concessions-grid { display: flex; flex-direction: column; gap: 1.5px; background: var(--rule); }
+.concession-row {
+  background: var(--card-bg); padding: 12px 16px;
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: 12px; align-items: center;
 }
-.metric-value {
-  font-size: 28px; font-weight: 800;
-  letter-spacing: -1px; line-height: 1;
+.concession-name { font-size: 12px; font-weight: 600; }
+.concession-area { font-family: var(--mono); font-size: 12px; text-align: right; }
+.concession-tag {
+  font-family: var(--mono); font-size: 9px; padding: 2px 7px;
+  letter-spacing: 0.5px; text-transform: uppercase;
 }
-.metric-unit {
-  font-family: var(--mono);
-  font-size: 11px; color: var(--muted); margin-top: 4px;
+.concession-tag.cap  { background: rgba(168,80,0,0.1); color: var(--warn); border: 1px solid rgba(168,80,0,0.3); }
+.concession-tag.free { background: rgba(42,107,58,0.1); color: var(--success); border: 1px solid rgba(42,107,58,0.3); }
+
+/* ── Warnings ───────────────────────────────────────────────────────────── */
+.warnings-list { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+.warning-item {
+  padding: 10px 14px; background: rgba(168,80,0,0.06);
+  border-left: 3px solid var(--warn);
+  font-size: 11px; font-family: var(--mono); color: var(--warn); line-height: 1.5;
 }
+.warning-item.danger { background: rgba(176,26,26,0.06); border-left-color: var(--danger); color: var(--danger); }
 
 /* ── Room table ─────────────────────────────────────────────────────────── */
-.room-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
+.room-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .room-table th {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase;
-  color: var(--muted);
-  padding: 8px 12px;
-  text-align: left;
-  background: var(--paper);
-  border-bottom: 2px solid var(--ink);
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted); padding: 8px 12px; text-align: left;
+  background: var(--paper); border-bottom: 2px solid var(--ink);
+  position: sticky; top: 0; z-index: 1;
 }
-
-.room-table td {
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--rule);
-  font-family: var(--mono);
-  font-size: 11px;
-}
-
+.room-table td { padding: 9px 12px; border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 11px; }
 .room-table tr:last-child td { border-bottom: none; }
-
 .room-table tr:hover td { background: rgba(212,82,10,0.03); }
-
-.room-table .td-label {
-  font-family: var(--sans);
-  font-weight: 600; font-size: 12px;
-  font-family: inherit;
-}
-
-.td-floor {
-  color: var(--muted);
-}
-
-.td-rule {
-  text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px;
-  font-weight: 600;
-}
+.td-label { font-weight: 600; }
+.td-floor { color: var(--muted); }
+.td-rule { text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; font-weight: 600; }
 .td-rule.full  { color: var(--success); }
 .td-rule.excl  { color: var(--danger); }
 .td-rule.half  { color: var(--warn); }
 .td-rule.cond  { color: #3949ab; }
-
 .td-warn { color: var(--danger); font-size: 10px; }
-
-/* ── Cap bar ────────────────────────────────────────────────────────────── */
-.cap-section {
-  margin-top: 24px;
-  padding: 20px;
-  border: 1.5px solid var(--rule);
-  background: var(--card-bg);
-}
-
-.cap-header {
-  display: flex; justify-content: space-between; align-items: baseline;
-  margin-bottom: 12px;
-}
-
-.cap-title {
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
-}
-
-.cap-pct {
-  font-family: var(--mono);
-  font-size: 14px; font-weight: 500;
-}
-.cap-pct.over { color: var(--danger); }
-
-.cap-track {
-  height: 8px; background: var(--rule); position: relative;
-}
-.cap-fill {
-  height: 100%; background: var(--accent2);
-  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-}
-.cap-fill.over { background: var(--danger); }
-.cap-fill::after {
-  content: '';
-  position: absolute; right: 0; top: -3px; bottom: -3px;
-  width: 2px; background: inherit;
-}
-
-/* ── Warnings ───────────────────────────────────────────────────────────── */
-.warnings-list {
-  margin-top: 16px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-
-.warning-item {
-  padding: 10px 14px;
-  background: rgba(168,80,0,0.06);
-  border-left: 3px solid var(--warn);
-  font-size: 11px;
-  font-family: var(--mono);
-  color: var(--warn);
-  line-height: 1.5;
-}
+.table-scroll { max-height: 360px; overflow-y: auto; }
 
 /* ── Download button ────────────────────────────────────────────────────── */
 .btn-download {
-  margin-top: 20px;
-  width: 100%;
-  padding: 14px;
-  font-family: var(--sans);
-  font-size: 13px; font-weight: 700;
+  margin-top: 20px; width: 100%; padding: 14px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase;
-  background: transparent;
-  color: var(--accent2);
-  border: 2px solid var(--accent2);
-  cursor: pointer;
+  background: transparent; color: var(--accent2);
+  border: 2px solid var(--accent2); cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  transition: all 0.2s;
-  text-decoration: none;
+  transition: all 0.2s; text-decoration: none;
 }
-.btn-download:hover {
-  background: var(--accent2); color: var(--paper);
-}
+.btn-download:hover { background: var(--accent2); color: var(--paper); }
 .btn-download svg { width: 16px; height: 16px; stroke: currentColor; }
 
 /* ── Error state ────────────────────────────────────────────────────────── */
-.error-box {
-  display: none;
-  margin-top: 16px;
-  padding: 16px;
-  border: 1.5px solid var(--danger);
-  background: rgba(176,26,26,0.05);
-}
+.error-box { display: none; margin-top: 16px; padding: 16px; border: 1.5px solid var(--danger); background: rgba(176,26,26,0.05); }
 .error-box.visible { display: block; }
-.error-box p {
-  font-family: var(--mono);
-  font-size: 12px; color: var(--danger); line-height: 1.5;
+.error-box p { font-family: var(--mono); font-size: 12px; color: var(--danger); line-height: 1.5; }
+
+/* ── Results section headers ────────────────────────────────────────────── */
+.section-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 12px; margin-top: 24px;
+  display: flex; align-items: center; gap: 10px;
 }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+/* ── Demo badge ─────────────────────────────────────────────────────────── */
+.demo-badge {
+  font-family: var(--mono); font-size: 9px; padding: 2px 8px;
+  background: var(--accent); color: var(--paper);
+  letter-spacing: 1px; text-transform: uppercase;
+  display: inline-block; vertical-align: middle; margin-left: 8px;
+}
+
+/* ── Tooltip ────────────────────────────────────────────────────────────── */
+[data-tip] { position: relative; cursor: help; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper);
+  font-family: var(--mono); font-size: 10px; padding: 6px 10px;
+  white-space: nowrap; pointer-events: none; opacity: 0;
+  transition: opacity 0.15s; z-index: 100;
+}
+[data-tip]:hover::after { opacity: 1; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 footer {
   position: relative; z-index: 1;
-  border-top: 1.5px solid var(--rule);
-  padding: 20px 48px;
+  border-top: 1.5px solid var(--rule); padding: 20px 48px;
   display: flex; justify-content: space-between; align-items: center;
 }
-.footer-left {
-  font-family: var(--mono);
-  font-size: 10px; color: var(--muted); letter-spacing: 0.5px;
-}
-.footer-right {
-  font-family: var(--mono);
-  font-size: 10px; color: var(--muted);
-}
+.footer-left { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+.footer-right { font-family: var(--mono); font-size: 10px; color: var(--muted); }
 
 /* ── Animations ─────────────────────────────────────────────────────────── */
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
+@keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .animate-in { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes countUp { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   header, main, footer { padding-left: 24px; padding-right: 24px; }
+  .demo-banner { padding-left: 24px; padding-right: 24px; flex-direction: column; align-items: flex-start; }
   .layout { grid-template-columns: 1fr; }
   .results-grid { grid-template-columns: 1fr 1fr; }
   .page-title { flex-direction: column; gap: 12px; align-items: flex-start; }
@@ -659,7 +489,7 @@ footer {
   </div>
   <div class="header-meta">
     <div class="header-badge">
-      <span class="status-dot"></span>API Connected<br>
+      <span class="status-dot" id="api-dot"></span><span id="api-status">Connecting…</span><br>
       PNAP APP-2 & APP-151
     </div>
     <div class="header-badge">
@@ -668,6 +498,18 @@ footer {
     </div>
   </div>
 </header>
+
+<!-- ── Demo Banner ──────────────────────────────────────────────────────── -->
+<div class="demo-banner" id="demo-banner">
+  <div class="demo-banner-text">
+    <span>Demo</span>
+    No floor plan? Try with sample residential data — Tower A, 3/F
+  </div>
+  <div class="demo-banner-actions">
+    <button class="btn-load-demo" onclick="loadDemo()">Load Sample Data →</button>
+    <button class="btn-dismiss-demo" onclick="dismissBanner()">dismiss</button>
+  </div>
+</div>
 
 <!-- ── Main ────────────────────────────────────────────────────────────── -->
 <main>
@@ -689,129 +531,180 @@ footer {
     <!-- ── Left: Upload + Results ──────────────────────────────────────── -->
     <div>
 
-      <!-- Upload card -->
+      <!-- Upload card with tabs -->
       <div class="card">
-        <div class="card-header">
-          <h2>Upload Floor Plan</h2>
-          <span class="card-label">Single floor analysis</span>
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchTab('upload',this)">Upload File</button>
+          <button class="tab-btn" onclick="switchTab('json',this)">JSON / Manual</button>
         </div>
-        <div class="card-body">
 
-          <!-- Drop zone -->
-          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <input type="file" id="file-input" accept=".dxf,.pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp"/>
-            <div class="upload-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
+        <!-- TAB: Upload -->
+        <div class="tab-panel active" id="tab-upload">
+          <div class="card-body">
+
+            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+              <input type="file" id="file-input" accept=".dxf,.pdf,.jpg,.jpeg,.png,.tif,.tiff,.bmp"/>
+              <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <div class="upload-title">Drop floor plan here</div>
+              <div class="upload-sub">or click to browse</div>
+              <div class="upload-formats">
+                <span class="fmt-tag">DXF</span>
+                <span class="fmt-tag">PDF</span>
+                <span class="fmt-tag">JPG</span>
+                <span class="fmt-tag">PNG</span>
+                <span class="fmt-tag">TIF</span>
+              </div>
             </div>
-            <div class="upload-title">Drop floor plan here</div>
-            <div class="upload-sub">or click to browse</div>
-            <div class="upload-formats">
-              <span class="fmt-tag">DXF</span>
-              <span class="fmt-tag">PDF</span>
-              <span class="fmt-tag">JPG</span>
-              <span class="fmt-tag">PNG</span>
-              <span class="fmt-tag">TIF</span>
+
+            <div class="file-selected" id="file-selected">
+              <div class="file-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+              <div>
+                <div class="file-name" id="file-name-text"></div>
+                <div class="file-size" id="file-size-text"></div>
+              </div>
+              <button class="file-remove" id="file-remove" title="Remove file">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Building Type</label>
+                <div class="select-wrap">
+                  <select id="building-type">
+                    <option value="residential">Residential</option>
+                    <option value="non_domestic">Non-Domestic</option>
+                    <option value="composite">Composite</option>
+                    <option value="hotel">Hotel</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Floor Label</label>
+                <input type="text" id="floor-label" value="3/F" placeholder="e.g. 3/F"/>
+              </div>
+              <div class="form-group">
+                <label>Project Name</label>
+                <input type="text" id="project-name" placeholder="Tower A"/>
+              </div>
+              <div class="form-group">
+                <label>Drawing Scale</label>
+                <div class="select-wrap">
+                  <select id="draw-scale" onchange="handleScaleChange(this)">
+                    <option value="20">1:20</option>
+                    <option value="50">1:50</option>
+                    <option value="100" selected>1:100</option>
+                    <option value="150">1:150</option>
+                    <option value="200">1:200</option>
+                    <option value="250">1:250</option>
+                    <option value="500">1:500</option>
+                    <option value="1000">1:1000</option>
+                    <option value="custom">Custom…</option>
+                  </select>
+                </div>
+                <div id="custom-scale-wrap" style="display:none;margin-top:6px;position:relative;">
+                  <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:12px;color:var(--muted);pointer-events:none;">1:</span>
+                  <input type="number" id="custom-scale" min="1" max="9999" placeholder="e.g. 125"
+                    style="padding-left:28px;width:100%;"
+                    oninput="validateCustomScale(this)"/>
+                </div>
+              </div>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="export-excel" checked/>
+              <span>Generate Excel area schedule (.xlsx)</span>
+            </label>
+
+            <div class="error-box" id="error-box"><p id="error-text"></p></div>
+
+            <button class="btn-analyse" id="btn-analyse" disabled onclick="runAnalyse()">
+              Analyse Floor Plan
+              <span class="spinner"></span>
+            </button>
+
           </div>
+        </div>
 
-          <!-- File selected indicator -->
-          <div class="file-selected" id="file-selected">
-            <div class="file-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-              </svg>
+        <!-- TAB: JSON / Manual -->
+        <div class="tab-panel" id="tab-json">
+          <div class="card-body">
+            <div class="manual-help">
+              Paste a JSON array of rooms. Each room needs <code>label</code> and <code>area_m2</code>. Optionally add <code>floor</code> and <code>id</code>.<br><br>
+              <strong>Tip:</strong> Click <strong>Load Sample Data</strong> in the banner above to see an example.
             </div>
-            <div>
-              <div class="file-name" id="file-name-text"></div>
-              <div class="file-size" id="file-size-text"></div>
+            <textarea id="json-input" spellcheck="false" placeholder='[
+  {"label": "Master Bedroom", "area_m2": 14.2, "floor": "3/F"},
+  {"label": "Balcony",        "area_m2": 4.5,  "floor": "3/F"},
+  {"label": "Bathroom",       "area_m2": 5.0,  "floor": "3/F"},
+  {"label": "Lift Shaft",     "area_m2": 3.0,  "floor": "3/F"}
+]'></textarea>
+            <div class="form-row" style="margin-top:16px;">
+              <div class="form-group">
+                <label>Building Type</label>
+                <div class="select-wrap">
+                  <select id="json-building-type">
+                    <option value="residential">Residential</option>
+                    <option value="non_domestic">Non-Domestic</option>
+                    <option value="composite">Composite</option>
+                    <option value="hotel">Hotel</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Project Name</label>
+                <input type="text" id="json-project-name" placeholder="Tower A"/>
+              </div>
             </div>
-            <button class="file-remove" id="file-remove" title="Remove file">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
+            <label class="checkbox-row">
+              <input type="checkbox" id="json-export-excel" checked/>
+              <span>Generate Excel area schedule (.xlsx)</span>
+            </label>
+            <div class="error-box" id="json-error-box"><p id="json-error-text"></p></div>
+            <button class="btn-analyse" id="btn-classify" onclick="runClassify()" style="margin-top:24px;">
+              Classify Rooms
+              <span class="spinner"></span>
             </button>
           </div>
-
-          <!-- Form controls -->
-          <div class="form-row">
-            <div class="form-group">
-              <label>Building Type</label>
-              <div class="select-wrap">
-                <select id="building-type">
-                  <option value="residential">Residential</option>
-                  <option value="non_domestic">Non-Domestic</option>
-                  <option value="composite">Composite</option>
-                  <option value="hotel">Hotel</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Floor Label</label>
-              <input type="text" id="floor-label" value="3/F" placeholder="e.g. 3/F"/>
-            </div>
-            <div class="form-group">
-              <label>Project Name</label>
-              <input type="text" id="project-name" placeholder="Tower A"/>
-            </div>
-            <div class="form-group">
-              <label>Drawing Scale</label>
-              <div class="select-wrap">
-                <select id="draw-scale">
-                  <option value="100" selected>1:100</option>
-                  <option value="50">1:50</option>
-                  <option value="200">1:200</option>
-                  <option value="500">1:500</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <label class="checkbox-row">
-            <input type="checkbox" id="export-excel" checked/>
-            <span>Generate Excel area schedule (.xlsx)</span>
-          </label>
-
-          <!-- Error box -->
-          <div class="error-box" id="error-box">
-            <p id="error-text"></p>
-          </div>
-
-          <!-- Submit -->
-          <button class="btn-analyse" id="btn-analyse" disabled>
-            <span class="btn-text"></span>
-            <span class="spinner"></span>
-          </button>
-
         </div>
+
       </div>
 
       <!-- Results (hidden until analysis) -->
       <div id="results" style="margin-top:32px;">
         <div class="card animate-in">
           <div class="card-header">
-            <h2>Area Report</h2>
+            <h2>Area Report <span id="demo-label"></span></h2>
             <span class="card-label" id="results-meta"></span>
           </div>
           <div class="card-body">
 
             <!-- Key metrics -->
             <div class="results-grid">
-              <div class="metric-cell gfa">
+              <div class="metric-cell gfa" data-tip="Gross Floor Area per PNAP APP-2">
                 <div class="metric-label">Gross Floor Area</div>
                 <div class="metric-value" id="m-gfa">—</div>
                 <div class="metric-unit">m²</div>
               </div>
-              <div class="metric-cell nofa">
+              <div class="metric-cell nofa" data-tip="Net Operational Floor Area">
                 <div class="metric-label">Net Op. Floor Area</div>
                 <div class="metric-value" id="m-nofa">—</div>
                 <div class="metric-unit">m²</div>
               </div>
-              <div class="metric-cell ratio">
+              <div class="metric-cell ratio" data-tip="NOFA ÷ GFA — higher is more efficient">
                 <div class="metric-label">NOFA / GFA</div>
                 <div class="metric-value" id="m-ratio">—</div>
                 <div class="metric-unit">efficiency ratio</div>
@@ -819,21 +712,33 @@ footer {
             </div>
 
             <!-- APP-151 cap -->
+            <div class="section-title">APP-151 Concession Cap</div>
             <div class="cap-section">
               <div class="cap-header">
-                <div class="cap-title">APP-151 10% Cap Utilisation</div>
+                <div class="cap-title" data-tip="Must not exceed 10% of total GFA">10% Cap Utilisation</div>
                 <div class="cap-pct" id="cap-pct">0%</div>
               </div>
               <div class="cap-track">
                 <div class="cap-fill" id="cap-fill" style="width:0%"></div>
               </div>
+              <div class="cap-sublabel">
+                <span id="cap-used-label">0 m² used</span>
+                <span id="cap-limit-label">limit: 0 m²</span>
+              </div>
+            </div>
+
+            <!-- Concessions breakdown -->
+            <div id="concessions-section" style="display:none">
+              <div class="section-title">Concessions Breakdown</div>
+              <div class="concessions-grid" id="concessions-grid"></div>
             </div>
 
             <!-- Warnings -->
             <div class="warnings-list" id="warnings-list"></div>
 
             <!-- Room table -->
-            <div style="margin-top:24px; overflow-x:auto;">
+            <div class="section-title">Room Schedule</div>
+            <div class="table-scroll">
               <table class="room-table">
                 <thead>
                   <tr>
@@ -914,6 +819,39 @@ footer {
         </div>
       </div>
 
+      <!-- Quick help -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Quick Help</h2>
+          <span class="card-label">GFA Rules</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="rule-badge badge-full" style="flex-shrink:0">full</span>
+              <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Counts 100% towards GFA</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="rule-badge badge-half" style="flex-shrink:0">half</span>
+              <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Counts 50% towards GFA</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="rule-badge badge-excl" style="flex-shrink:0">excl</span>
+              <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Excluded — no GFA impact</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="rule-badge badge-cond" style="flex-shrink:0">cond</span>
+              <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Conditional concession</span>
+            </div>
+          </div>
+          <div style="margin-top:16px;padding:12px;background:rgba(10,15,26,0.03);border-left:3px solid var(--rule);">
+            <div style="font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.7;">
+              The APP-151 10% cap limits total non-mandatory concessions to 10% of the building's GFA. Exceeding this requires BD approval.
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </main>
@@ -930,7 +868,9 @@ footer {
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────────
-const API_BASE = 'http://localhost:5000';  // Update to your deployed API URL
+const API_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:5000'
+  : window.location.origin;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 const dropZone     = document.getElementById('drop-zone');
@@ -940,12 +880,20 @@ const fileNameEl   = document.getElementById('file-name-text');
 const fileSizeEl   = document.getElementById('file-size-text');
 const fileRemove   = document.getElementById('file-remove');
 const btnAnalyse   = document.getElementById('btn-analyse');
-const errorBox     = document.getElementById('error-box');
-const errorText    = document.getElementById('error-text');
+const btnClassify  = document.getElementById('btn-classify');
 const resultsEl    = document.getElementById('results');
 const ruleList     = document.getElementById('rule-list');
 
 let selectedFile = null;
+let isDemoResult = false;
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
 
 // ── File helpers ─────────────────────────────────────────────────────────────
 function formatBytes(b) {
@@ -961,7 +909,7 @@ function setFile(file) {
   fileSelected.classList.add('visible');
   dropZone.classList.add('has-file');
   btnAnalyse.disabled = false;
-  clearError();
+  clearError('error-box');
 }
 
 function clearFile() {
@@ -972,35 +920,50 @@ function clearFile() {
   btnAnalyse.disabled = true;
 }
 
-function showError(msg) {
-  errorText.textContent = msg;
-  errorBox.classList.add('visible');
+function showError(boxId, msg) {
+  document.getElementById(boxId.replace('-box','') + '-box') || document.getElementById(boxId);
+  const box  = document.getElementById(boxId);
+  const text = document.getElementById(boxId.replace('box','text'));
+  if (box && text) { text.textContent = msg; box.classList.add('visible'); }
 }
-function clearError() {
-  errorBox.classList.remove('visible');
+function clearError(boxId) {
+  const box = document.getElementById(boxId);
+  if (box) box.classList.remove('visible');
 }
 
 // ── Drag & drop ──────────────────────────────────────────────────────────────
-dropZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  dropZone.classList.add('dragover');
-});
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
+  e.preventDefault(); dropZone.classList.remove('dragover');
   const file = e.dataTransfer.files[0];
   if (file) setFile(file);
 });
-fileInput.addEventListener('change', e => {
-  if (e.target.files[0]) setFile(e.target.files[0]);
-});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) setFile(e.target.files[0]); });
 fileRemove.addEventListener('click', e => { e.stopPropagation(); clearFile(); });
+
+// ── API health check ─────────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot    = document.getElementById('api-dot');
+  const status = document.getElementById('api-status');
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      dot.classList.remove('offline');
+      status.textContent = 'API Connected';
+    } else {
+      throw new Error();
+    }
+  } catch {
+    dot.classList.add('offline');
+    status.textContent = 'API Offline';
+  }
+}
 
 // ── Load rules from API ──────────────────────────────────────────────────────
 async function loadRules() {
   try {
-    const res  = await fetch(`${API_BASE}/api/rules`);
+    const res  = await fetch(`${API_BASE}/api/rules`, { signal: AbortSignal.timeout(5000) });
     const data = await res.json();
     renderRules(data.rules);
   } catch {
@@ -1016,8 +979,7 @@ function renderRules(rules) {
     const gfaClass = r.gfa_rule === 'full' ? 'full'
                    : r.gfa_rule === 'half' ? 'half'
                    : r.gfa_rule === 'excluded' ? 'excl' : 'cond';
-    const capBadge = r.subject_to_cap
-      ? `<span class="rule-badge badge-cap">Cap</span>` : '';
+    const capBadge = r.subject_to_cap ? `<span class="rule-badge badge-cap">Cap</span>` : '';
     return `
       <div class="rule-item">
         <div class="rule-name">${r.label}</div>
@@ -1027,72 +989,195 @@ function renderRules(rules) {
   }).join('');
 }
 
-// ── Analyse ──────────────────────────────────────────────────────────────────
-btnAnalyse.addEventListener('click', async () => {
+// ── Analyse (file upload) ─────────────────────────────────────────────────────
+async function runAnalyse() {
   if (!selectedFile) return;
 
   const buildingType = document.getElementById('building-type').value;
   const floorLabel   = document.getElementById('floor-label').value || '—';
   const projectName  = document.getElementById('project-name').value || 'Floor Plan';
-  const scale        = document.getElementById('draw-scale').value;
+  const scale        = getScale();
   const exportExcel  = document.getElementById('export-excel').checked;
 
-  // UI: loading state
+  if (!scale) { showError('error-box', 'Please enter a valid drawing scale (e.g. 1:125).'); return; }
+
   btnAnalyse.disabled = true;
   btnAnalyse.classList.add('loading');
-  clearError();
+  clearError('error-box');
   resultsEl.classList.remove('visible');
+  isDemoResult = false;
 
   const form = new FormData();
-  form.append('file',          selectedFile);
+  form.append('file', selectedFile);
   form.append('building_type', buildingType);
-  form.append('floor',         floorLabel);
-  form.append('project_name',  projectName);
-  form.append('scale',         scale);
-  form.append('export_excel',  exportExcel ? 'true' : 'false');
+  form.append('floor', floorLabel);
+  form.append('project_name', projectName);
+  form.append('scale', scale);
+  form.append('export_excel', exportExcel ? 'true' : 'false');
 
   try {
     const res  = await fetch(`${API_BASE}/api/analyse`, { method: 'POST', body: form });
     const data = await res.json();
-
     if (!res.ok || !data.success) {
-      showError(data.error || `Server error (${res.status})`);
+      showError('error-box', data.error || `Server error (${res.status})`);
     } else {
-      renderResults(data);
+      renderResults(data, false);
     }
   } catch (e) {
-    showError(`Could not reach API at ${API_BASE}. Make sure the backend is running (python api.py).`);
+    showError('error-box', `Could not reach API at ${API_BASE}. Make sure the backend is running.`);
   } finally {
     btnAnalyse.disabled = false;
     btnAnalyse.classList.remove('loading');
   }
-});
+}
+
+// ── Classify (JSON input) ─────────────────────────────────────────────────────
+async function runClassify() {
+  const raw = document.getElementById('json-input').value.trim();
+  if (!raw) { showError('json-error-box', 'Please enter room data as JSON.'); return; }
+
+  let rooms;
+  try { rooms = JSON.parse(raw); }
+  catch (e) { showError('json-error-box', `JSON parse error: ${e.message}`); return; }
+
+  const buildingType = document.getElementById('json-building-type').value;
+  const projectName  = document.getElementById('json-project-name').value || 'Floor Plan';
+  const exportExcel  = document.getElementById('json-export-excel').checked;
+
+  btnClassify.disabled = true;
+  btnClassify.classList.add('loading');
+  clearError('json-error-box');
+  resultsEl.classList.remove('visible');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/classify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ building_type: buildingType, project_name: projectName, export_excel: exportExcel, rooms }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      showError('json-error-box', data.error || `Server error (${res.status})`);
+    } else {
+      renderResults(data, isDemoResult);
+    }
+  } catch (e) {
+    showError('json-error-box', `Could not reach API at ${API_BASE}. Make sure the backend is running.`);
+  } finally {
+    btnClassify.disabled = false;
+    btnClassify.classList.remove('loading');
+  }
+}
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+const DEMO_ROOMS = [
+  {"label": "Living / Dining",    "area_m2": 28.4, "floor": "3/F"},
+  {"label": "Master Bedroom",     "area_m2": 16.2, "floor": "3/F"},
+  {"label": "Bedroom 2",          "area_m2": 11.5, "floor": "3/F"},
+  {"label": "Kitchen",            "area_m2": 9.8,  "floor": "3/F"},
+  {"label": "Master Bathroom",    "area_m2": 6.2,  "floor": "3/F"},
+  {"label": "Bathroom",           "area_m2": 4.8,  "floor": "3/F"},
+  {"label": "Balcony",            "area_m2": 7.5,  "floor": "3/F"},
+  {"label": "Utility Platform",   "area_m2": 2.1,  "floor": "3/F"},
+  {"label": "Entrance Lobby",     "area_m2": 4.4,  "floor": "3/F"},
+  {"label": "Lift Lobby",         "area_m2": 8.6,  "floor": "3/F"},
+  {"label": "Staircase",          "area_m2": 6.3,  "floor": "3/F"},
+  {"label": "Lift Shaft",         "area_m2": 3.2,  "floor": "3/F"},
+  {"label": "Plant Room",         "area_m2": 5.1,  "floor": "3/F"},
+  {"label": "Mail Room",          "area_m2": 3.8,  "floor": "3/F"},
+];
+
+function loadDemo() {
+  // Switch to JSON tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn')[1].classList.add('active');
+  document.getElementById('tab-json').classList.add('active');
+
+  document.getElementById('json-input').value = JSON.stringify(DEMO_ROOMS, null, 2);
+  document.getElementById('json-project-name').value = 'Tower A';
+  isDemoResult = true;
+
+  dismissBanner();
+
+  // Auto-run
+  setTimeout(() => runClassify(), 100);
+}
+
+function dismissBanner() {
+  document.getElementById('demo-banner').style.display = 'none';
+}
 
 // ── Render results ────────────────────────────────────────────────────────────
-function renderResults(data) {
-  // Metrics
-  document.getElementById('m-gfa').textContent   = data.total_gfa_m2.toFixed(1);
-  document.getElementById('m-nofa').textContent  = data.total_nofa_m2.toFixed(1);
-  document.getElementById('m-ratio').textContent = (data.nofa_gfa_ratio * 100).toFixed(1) + '%';
-  document.getElementById('results-meta').textContent =
-    `${data.rooms_parsed} rooms · ${data.building_type} · ${data.floor || '—'}`;
+function animateNumber(el, target, decimals = 1, suffix = '') {
+  const start = performance.now();
+  const duration = 800;
+  const startVal = 0;
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const val = startVal + (target - startVal) * ease;
+    el.textContent = val.toFixed(decimals) + suffix;
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 
-  // Cap bar
-  const capPct  = Math.min(data.cap_utilisation_pct, 100);
-  const capEl   = document.getElementById('cap-fill');
-  const capText = document.getElementById('cap-pct');
-  capEl.style.width = capPct + '%';
+function renderResults(data, isDemo) {
+  // Demo badge
+  document.getElementById('demo-label').innerHTML = isDemo
+    ? '<span class="demo-badge">Demo</span>' : '';
+
+  // Meta
+  document.getElementById('results-meta').textContent =
+    `${data.rooms_parsed} rooms · ${data.building_type} · ${data.floor || data.project_name || '—'}`;
+
+  // Metrics — animated
+  const gfaEl   = document.getElementById('m-gfa');
+  const nofaEl  = document.getElementById('m-nofa');
+  const ratioEl = document.getElementById('m-ratio');
+  animateNumber(gfaEl,  data.total_gfa_m2,  1);
+  animateNumber(nofaEl, data.total_nofa_m2, 1);
+
+  const ratioPct = (data.nofa_gfa_ratio * 100);
+  animateNumber(ratioEl, ratioPct, 1, '%');
+
+  // Cap bar — animated
+  const capPct   = Math.min(data.cap_utilisation_pct, 100);
+  const capEl    = document.getElementById('cap-fill');
+  const capText  = document.getElementById('cap-pct');
+  capEl.style.width = '0%';
+  setTimeout(() => { capEl.style.width = capPct + '%'; }, 100);
   capText.textContent = data.cap_utilisation_pct.toFixed(1) + '%';
-  if (data.cap_exceeded) {
-    capEl.classList.add('over');
-    capText.classList.add('over');
+  capEl.classList.toggle('over', data.cap_exceeded);
+  capText.classList.toggle('over', data.cap_exceeded);
+  document.getElementById('cap-used-label').textContent = `${(data.capped_total_m2||0).toFixed(1)} m² used`;
+  document.getElementById('cap-limit-label').textContent = `limit: ${(data.cap_limit_m2||0).toFixed(1)} m²`;
+
+  // Concessions breakdown
+  const concessions = data.concessions || [];
+  const concSection = document.getElementById('concessions-section');
+  const concGrid    = document.getElementById('concessions-grid');
+  if (concessions.length > 0) {
+    concSection.style.display = 'block';
+    concGrid.innerHTML = concessions.map(c => `
+      <div class="concession-row">
+        <div class="concession-name">${c.item}</div>
+        <div class="concession-area">${c.effective_gfa_m2.toFixed(2)} m²</div>
+        <span class="concession-tag ${c.subject_to_cap ? 'cap' : 'free'}">
+          ${c.subject_to_cap ? 'Cap subject' : 'Cap exempt'}
+        </span>
+      </div>`).join('');
+  } else {
+    concSection.style.display = 'none';
   }
 
   // Warnings
   const warnList = document.getElementById('warnings-list');
-  warnList.innerHTML = (data.warnings || []).map(w =>
-    `<div class="warning-item">⚠ ${w}</div>`
-  ).join('');
+  warnList.innerHTML = (data.warnings || []).map(w => {
+    const isDanger = w.includes('exceeded') || w.includes('cap exceeded');
+    return `<div class="warning-item ${isDanger ? 'danger' : ''}">⚠ ${w}</div>`;
+  }).join('');
 
   // Room table
   const tbody = document.getElementById('room-tbody');
@@ -1123,12 +1208,34 @@ function renderResults(data) {
     dlBtn.style.display = 'none';
   }
 
-  // Show results panel
+  // Show results
   resultsEl.classList.add('visible');
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ── Scale helpers ─────────────────────────────────────────────────────────────
+function handleScaleChange(sel) {
+  const wrap = document.getElementById('custom-scale-wrap');
+  wrap.style.display = sel.value === 'custom' ? 'block' : 'none';
+  if (sel.value === 'custom') document.getElementById('custom-scale').focus();
+}
+
+function getScale() {
+  const sel = document.getElementById('draw-scale');
+  if (sel.value === 'custom') {
+    const v = parseInt(document.getElementById('custom-scale').value, 10);
+    return (!v || v < 1) ? null : v;
+  }
+  return parseInt(sel.value, 10);
+}
+
+function validateCustomScale(input) {
+  const v = parseInt(input.value, 10);
+  input.style.borderColor = (!v || v < 1 || v > 9999) ? 'var(--danger)' : 'var(--accent2)';
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
+checkHealth();
 loadRules();
 </script>
 </body>
