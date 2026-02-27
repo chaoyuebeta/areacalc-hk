@@ -41,6 +41,8 @@ from room_rules import ROOM_RULES, BuildingType
 from area_calculator import AreaCalculator, RoomInput
 from floor_plan_parser import parse_floor_plan, rooms_from_extracted
 from excel_exporter import export_to_excel
+from dwg_converter import convert_dwg, get_available_backends
+from batch_processor import BatchProcessor, FloorSpec
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -50,6 +52,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"]  = FRONTEND_ORIGIN
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+@app.route("/", defaults={"path": ""}, methods=["OPTIONS"])
+@app.route("/<path:path>", methods=["OPTIONS"])
+def handle_preflight(path):
+    return "", 204
 
 MAX_FILE_MB   = int(os.getenv("MAX_FILE_MB", 50))
 UPLOAD_FOLDER = Path(os.getenv("UPLOAD_FOLDER", "./uploads"))
@@ -89,6 +107,13 @@ def _save_upload(file, suffix: str) -> Path:
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+
+@app.get("/")
+def serve_ui():
+    """Serve the frontend UI."""
+    from flask import send_from_directory
+    return send_from_directory(".", "index.html")
 
 @app.get("/api/health")
 def health():
@@ -175,6 +200,13 @@ def analyse():
         extracted = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale)
         room_inputs = rooms_from_extracted(extracted)
 
+        # Check if scale was auto-detected from scale bar
+        detected_scale = None
+        if extracted:
+            src = extracted[0]
+            if hasattr(src, 'notes') and 'scale bar' in (src.notes or '').lower():
+                detected_scale = scale
+
         if not room_inputs:
             return _err(
                 "No rooms could be extracted from this file. "
@@ -209,10 +241,12 @@ def analyse():
 
     # ── Build response ───────────────────────────────────────────────────────
     result = report.to_dict()
-    result["success"]      = True
-    result["project_name"] = project_name
-    result["floor"]        = floor_label
-    result["rooms_parsed"] = len(room_inputs)
+    result["success"]         = True
+    result["project_name"]    = project_name
+    result["floor"]           = floor_label
+    result["rooms_parsed"]    = len(room_inputs)
+    result["scale_used"]      = scale
+    result["scale_source"]    = "scale_bar_detected" if detected_scale else "user_input"
     if download_id:
         result["download_id"]  = download_id
         result["download_url"] = f"/api/download/{download_id}"
@@ -341,6 +375,240 @@ def download(download_id: str):
     )
 
 
+@app.post("/api/detect-scale")
+def detect_scale():
+    """
+    Pre-flight endpoint: upload a floor plan and get back the detected scale
+    (from title block text or scale bar image analysis) without running the
+    full area calculation.  The client can then confirm / override the scale
+    before calling /api/analyse.
+
+    Multipart form fields:
+      file   (required)  Floor plan file
+      scale  (optional)  Fallback scale denominator (default 100)
+    """
+    if "file" not in request.files:
+        return _err("No file uploaded.")
+
+    file = request.files["file"]
+    if not file.filename:
+        return _err("Empty filename.")
+
+    suffix = Path(file.filename).suffix.lower()
+    if not _allowed(file.filename):
+        return _err(f"Unsupported file type '{suffix}'.")
+
+    fallback_scale = int(request.form.get("scale", 100))
+    upload_path    = _save_upload(file, suffix)
+
+    detected_scale  = None
+    detection_method = "none"
+
+    try:
+        from floor_plan_parser import detect_scale_from_image, _detect_scale, _is_scanned_pdf
+        import pdfplumber
+
+        if suffix == ".pdf":
+            # Try text-based detection first
+            try:
+                with pdfplumber.open(str(upload_path)) as pdf:
+                    for page in pdf.pages[:3]:
+                        words     = page.extract_words(x_tolerance=3, y_tolerance=3)
+                        full_text = " ".join(w["text"] for w in words)
+                        s = _detect_scale([full_text])
+                        if s:
+                            detected_scale   = s
+                            detection_method = "text"
+                            break
+                        # If no text scale, try scale bar on rendered image
+                        if not detected_scale:
+                            try:
+                                img = page.to_image(resolution=150).original
+                                s   = detect_scale_from_image(img)
+                                if s:
+                                    detected_scale   = s
+                                    detection_method = "scale_bar"
+                                    break
+                            except Exception:
+                                pass
+            except Exception as e:
+                logger.warning(f"PDF scale detection failed: {e}")
+
+        elif suffix in (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"):
+            from PIL import Image
+            img = Image.open(str(upload_path))
+            # Try OCR text first
+            import pytesseract
+            text = pytesseract.image_to_string(img, config="--psm 6")
+            s = _detect_scale([text])
+            if s:
+                detected_scale   = s
+                detection_method = "text"
+            else:
+                s = detect_scale_from_image(img)
+                if s:
+                    detected_scale   = s
+                    detection_method = "scale_bar"
+
+        elif suffix == ".dxf":
+            import ezdxf
+            doc   = ezdxf.readfile(str(upload_path))
+            msp   = doc.modelspace()
+            texts = []
+            for ent in msp.query("TEXT MTEXT"):
+                try:
+                    raw = ent.dxf.text if ent.dxftype() == "TEXT" else ent.text
+                    texts.append(raw.strip())
+                except Exception:
+                    pass
+            s = _detect_scale(texts)
+            if s:
+                detected_scale   = s
+                detection_method = "text"
+
+    except Exception as e:
+        logger.warning(f"detect-scale error: {e}")
+    finally:
+        try: upload_path.unlink()
+        except Exception: pass
+
+    return jsonify({
+        "success":          True,
+        "detected_scale":   detected_scale,
+        "fallback_scale":   fallback_scale,
+        "scale_to_use":     detected_scale or fallback_scale,
+        "detection_method": detection_method,   # "text" | "scale_bar" | "none"
+        "confidence":       "high" if detection_method == "text"
+                            else "medium" if detection_method == "scale_bar"
+                            else "low",
+    })
+
+
+@app.post("/api/annotate")
+def annotate():
+    """
+    Upload a floor plan PDF + room JSON, get back an annotated PDF
+    with GFA/NOFA area labels overlaid on each room.
+
+    Multipart form fields:
+      file           (required)  Original floor plan PDF
+      building_type  (optional)  Default: residential
+      floor          (optional)  Floor label. Default: —
+      project_name   (optional)
+      scale          (optional)  Default: 100
+      show_gfa_rule  (optional)  "true"/"false". Default: true
+      show_legend    (optional)  "true"/"false". Default: true
+      rooms          (optional)  Pre-parsed rooms JSON (skip re-parsing)
+    """
+    if "file" not in request.files:
+        return _err("No file uploaded.")
+
+    file = request.files["file"]
+    if not file.filename:
+        return _err("Empty filename.")
+
+    suffix = Path(file.filename).suffix.lower()
+    if suffix != ".pdf":
+        return _err("Only PDF files are supported for annotation.")
+
+    raw_bt       = request.form.get("building_type", "residential")
+    floor_label  = request.form.get("floor", "—")
+    project_name = request.form.get("project_name", "Floor Plan")
+    scale        = int(request.form.get("scale", 100))
+    show_gfa     = request.form.get("show_gfa_rule", "true").lower() == "true"
+    show_legend  = request.form.get("show_legend",   "true").lower() == "true"
+
+    try:
+        building_type = _parse_building_type(raw_bt)
+    except ValueError as e:
+        return _err(str(e))
+
+    # Save original PDF — we need it twice (parse + annotate) so keep it
+    upload_path = _save_upload(file, ".pdf")
+
+    try:
+        # ── Parse rooms (or accept pre-supplied JSON) ─────────────────────
+        rooms_json = request.form.get("rooms", "")
+        if rooms_json:
+            import json as _json
+            raw_rooms  = _json.loads(rooms_json)
+            room_inputs = [
+                RoomInput(
+                    label   = r.get("label", "Unknown"),
+                    area_m2 = float(r.get("area_m2", 0)),
+                    floor   = r.get("floor", floor_label),
+                    room_id = r.get("id", ""),
+                )
+                for r in raw_rooms
+            ]
+        else:
+            extracted   = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale)
+            room_inputs = rooms_from_extracted(extracted)
+
+        if not room_inputs:
+            return _err("No rooms could be extracted from this file.", 422)
+
+        # ── Calculate areas ───────────────────────────────────────────────
+        calc   = AreaCalculator(building_type)
+        report = calc.calculate(room_inputs)
+
+        # ── Annotate PDF ──────────────────────────────────────────────────
+        from pdf_annotator import annotate_pdf
+
+        dl_id      = str(uuid.uuid4())
+        out_path   = OUTPUT_FOLDER / f"{dl_id}_annotated.pdf"
+
+        annotate_pdf(
+            pdf_path     = str(upload_path),
+            report       = report,
+            output_path  = str(out_path),
+            project_name = project_name,
+            show_gfa_rule= show_gfa,
+            show_legend  = show_legend,
+        )
+
+        logger.info(f"Annotated PDF saved: {out_path.name}")
+
+    except ImportError as e:
+        return _err(f"Missing dependency: {e}", 501)
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        return _err(f"Annotation failed: {e}", 500)
+    finally:
+        try: upload_path.unlink()
+        except Exception: pass
+
+    result = report.to_dict()
+    result["success"]           = True
+    result["project_name"]      = project_name
+    result["floor"]             = floor_label
+    result["rooms_parsed"]      = len(room_inputs)
+    result["annotated_pdf_id"]  = dl_id
+    result["annotated_pdf_url"] = f"/api/download-annotated/{dl_id}"
+
+    return jsonify(result), 200
+
+
+@app.get("/api/download-annotated/<download_id>")
+def download_annotated(download_id: str):
+    """Download an annotated PDF."""
+    try:
+        uuid.UUID(download_id)
+    except ValueError:
+        abort(400)
+
+    pdf_path = OUTPUT_FOLDER / f"{download_id}_annotated.pdf"
+    if not pdf_path.exists():
+        abort(404)
+
+    return send_file(
+        str(pdf_path),
+        as_attachment=True,
+        download_name="annotated_floor_plan.pdf",
+        mimetype="application/pdf",
+    )
+
+
 @app.post("/api/classify")
 def classify_rooms():
     """
@@ -412,6 +680,21 @@ def classify_rooms():
         result["download_url"] = f"/api/download/{download_id}"
 
     return jsonify(result), 200
+
+
+
+@app.get("/api/backends")
+def backends_check():
+    """Return which DWG conversion backends are available on this server."""
+    avail = get_available_backends()
+    return jsonify({
+        "success": True,
+        "backends": {
+            name: {"available": bool(path), "path": path}
+            for name, path in avail.items()
+        },
+        "dwg_conversion_available": any(avail.values()),
+    })
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
