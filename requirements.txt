@@ -7,3 +7,5 @@ pytesseract==0.3.13
 pypdf==5.9.0
 pdfminer.six==20251230
 gunicorn==23.0.0
+opencv-python-headless==4.10.0.84
+reportlab==4.2.5

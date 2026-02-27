@@ -41,8 +41,6 @@ from room_rules import ROOM_RULES, BuildingType
 from area_calculator import AreaCalculator, RoomInput
 from floor_plan_parser import parse_floor_plan, rooms_from_extracted
 from excel_exporter import export_to_excel
-from dwg_converter import convert_dwg, get_available_backends
-from batch_processor import BatchProcessor, FloorSpec
 
 # ── App setup ─────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -52,22 +50,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
-
-@app.after_request
-def add_cors_headers(response):
-    response.headers["Access-Control-Allow-Origin"]  = FRONTEND_ORIGIN
-    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-    return response
-
-@app.route("/", defaults={"path": ""}, methods=["OPTIONS"])
-@app.route("/<path:path>", methods=["OPTIONS"])
-def handle_preflight(path):
-    return "", 204
 
 MAX_FILE_MB   = int(os.getenv("MAX_FILE_MB", 50))
 UPLOAD_FOLDER = Path(os.getenv("UPLOAD_FOLDER", "./uploads"))
@@ -107,13 +89,6 @@ def _save_upload(file, suffix: str) -> Path:
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-
-
-@app.get("/")
-def serve_ui():
-    """Serve the frontend UI."""
-    from flask import send_from_directory
-    return send_from_directory(".", "index.html")
 
 @app.get("/api/health")
 def health():
@@ -437,21 +412,6 @@ def classify_rooms():
         result["download_url"] = f"/api/download/{download_id}"
 
     return jsonify(result), 200
-
-
-
-@app.get("/api/backends")
-def backends_check():
-    """Return which DWG conversion backends are available on this server."""
-    avail = get_available_backends()
-    return jsonify({
-        "success": True,
-        "backends": {
-            name: {"available": bool(path), "path": path}
-            for name, path in avail.items()
-        },
-        "dwg_conversion_available": any(avail.values()),
-    })
 
 
 # ── Error handlers ────────────────────────────────────────────────────────────
