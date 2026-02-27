@@ -103,6 +103,92 @@ def _extract_area_from_text(text: str) -> Optional[float]:
     return float(m.group(1)) if m else None
 
 
+# ─── Title block filtering ────────────────────────────────────────────────────
+# HK BD drawings almost always have the title block in the bottom-right corner,
+# occupying roughly the rightmost 25% × bottom 20% of the page.
+# We exclude that zone AND filter by known title block keywords.
+
+_TITLE_BLOCK_RIGHT  = 0.75   # exclude text with x0 > 75% of page width
+_TITLE_BLOCK_BOTTOM = 0.80   # exclude text with y0 > 80% of page height
+
+# Keywords that almost never appear inside floor plan rooms
+_TITLE_BLOCK_KEYWORDS = re.compile(
+    r'\b('
+    # BD / project admin (English)
+    r'bim\s*ref|bd\s*ref|bd.s\s*official|fsd\s*ref'
+    r'|source\s*drawing|rev(?:ision)?\.?\s*no|drawing\s*no|dwg\.?\s*no'
+    r'|drawing\s*title|project\s*title|project\s*name'
+    r'|checked\s*by|drawn\s*by|approved\s*by|authorised\s*by'
+    r'|signature|date\s*of\s*issue'
+    # Scale / north arrow labels
+    r'|north\s*arrow|true\s*north|magnetic\s*north'
+    # Standard notes / legend headers
+    r'|general\s*notes?|legend|abbreviations?|symbols?'
+    r'|all\s*dimensions?\s*in|dimensions?\s*in\s*mm'
+    r'|do\s*not\s*scale|not\s*to\s*scale|nts'
+    # Revision table
+    r'|rev\.\s*description|amendment'
+    # Certification / disclaimers
+    r'|copyright|all\s*rights\s*reserved|confidential'
+    # Common BD form labels
+    r'|xxx|a00[0-9]|c00[0-9]'
+    r')\b'
+    # Chinese title block keywords (no word boundaries needed for CJK)
+    r'|圖紙編號|圖號|圖名|圖則編號'
+    r'|項目名稱|工程名稱|項目編號'
+    r'|審核|審批|核准|批准|簽署|簽名'
+    r'|繪圖|製圖|校對|核對'
+    r'|發出日期|修訂日期|日期'
+    r'|修訂編號|修訂記錄|版本'
+    r'|比例尺|圖紙比例'          # "scale" label in title block
+    r'|備註|一般備註|圖例|縮寫'
+    r'|版權|保密|機密'
+    r'|所有尺寸以毫米計|尺寸單位',
+    re.IGNORECASE,
+)
+
+# Short all-caps strings typical of title block codes (e.g. "REV", "NTS", "BD")
+_TITLE_BLOCK_CODE = re.compile(r'^[A-Z0-9/\-]{1,6}$')
+
+
+def _is_title_block_text(
+    text: str,
+    x0: float, y0: float,
+    page_width: float, page_height: float,
+) -> bool:
+    """
+    Return True if this text block is likely part of the title block / border
+    and should be excluded from room label extraction.
+
+    Rules (any one triggers exclusion):
+      1. Located in the bottom-right corner zone (right 25% × bottom 20%).
+      2. Located in the bottom strip only (bottom 10% of page) — stamps, page nos.
+      3. Contains known title block keywords.
+      4. Is a short all-caps code with no alphabetic room-name meaning
+         AND is positioned in the right 30% of the page.
+    """
+    # Rule 1 — bottom-right corner
+    if (page_width  > 0 and x0 / page_width  > _TITLE_BLOCK_RIGHT and
+            page_height > 0 and y0 / page_height > _TITLE_BLOCK_BOTTOM):
+        return True
+
+    # Rule 2 — bottom strip (page numbers, stamps, revision dates)
+    if page_height > 0 and y0 / page_height > 0.92:
+        return True
+
+    # Rule 3 — keyword match
+    if _TITLE_BLOCK_KEYWORDS.search(text):
+        return True
+
+    # Rule 4 — short all-caps code in right margin
+    stripped = text.strip()
+    if (_TITLE_BLOCK_CODE.match(stripped) and
+            page_width > 0 and x0 / page_width > 0.70):
+        return True
+
+    return False
+
+
 # ─── Room label cleaner ───────────────────────────────────────────────────────
 
 _NOISE = re.compile(
@@ -112,8 +198,12 @@ _NOISE = re.compile(
     re.IGNORECASE
 )
 
+# Characters to strip from start/end of labels — explicitly excludes CJK range
+_STRIP_CHARS = " \t\n\r.,;:-_/\\"
+
+
 def _clean_label(raw: str) -> str:
-    label = _NOISE.sub("", raw).strip(" \t\n\r.,;:-_/\\")
+    label = _NOISE.sub("", raw).strip(_STRIP_CHARS)
     label = re.sub(r'\s{2,}', ' ', label)
     return label
 
@@ -261,9 +351,7 @@ def _parse_dwg_dxf(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]
 def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
     """
     Extract rooms from a vector PDF using pdfplumber.
-    Strategy: find text blocks that look like room labels, attempt to
-    associate nearby area annotations, and use bounding-box geometry
-    as a fallback area estimate.
+    Title block text (bottom-right corner + keyword filter) is excluded.
     """
     import pdfplumber
 
@@ -271,6 +359,9 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
 
     with pdfplumber.open(filepath) as pdf:
         for page_num, page in enumerate(pdf.pages):
+            page_w = float(page.width)
+            page_h = float(page.height)
+
             words = page.extract_words(
                 x_tolerance=3, y_tolerance=3,
                 keep_blank_chars=False,
@@ -278,7 +369,7 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
             )
             full_text = " ".join(w["text"] for w in words)
 
-            # Detect scale
+            # Detect scale from full page text (title block often has "SCALE 1:100")
             detected = _detect_scale([full_text])
             if detected:
                 scale = detected
@@ -294,30 +385,32 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
             for y, line_words in sorted(lines.items()):
                 line_words.sort(key=lambda w: w["x0"])
                 text = " ".join(w["text"] for w in line_words)
-                x0   = min(w["x0"]    for w in line_words)
-                y0   = min(w["top"]   for w in line_words)
-                x1   = max(w["x1"]    for w in line_words)
-                y1   = max(w["bottom"]for w in line_words)
+                x0   = min(w["x0"]     for w in line_words)
+                y0   = min(w["top"]    for w in line_words)
+                x1   = max(w["x1"]     for w in line_words)
+                y1   = max(w["bottom"] for w in line_words)
                 blocks.append({"text": text, "x0": x0, "y0": y0,
                                "x1": x1, "y1": y1})
 
-            # Identify room labels vs area annotations
+            skipped_title_block = 0
             for block in blocks:
-                raw   = block["text"].strip()
-                label = _clean_label(raw)
+                raw = block["text"].strip()
 
+                # ── Title block filter ───────────────────────────────────────
+                if _is_title_block_text(raw, block["x0"], block["y0"],
+                                        page_w, page_h):
+                    skipped_title_block += 1
+                    continue
+
+                label = _clean_label(raw)
                 if not label or len(label) < 2:
                     continue
-                # Skip pure numbers / coordinates
                 if re.fullmatch(r'[\d\s.,:/\\-]+', label):
                     continue
 
-                explicit_area = _extract_area_from_text(raw)
-
-                # Estimate area from bounding box if no explicit area
-                # (very rough — bbox of the label, not the room polygon)
+                explicit_area  = _extract_area_from_text(raw)
                 bbox_area_pts2 = (block["x1"]-block["x0"]) * (block["y1"]-block["y0"])
-                area_m2 = explicit_area or _pdf_pts_to_m2(bbox_area_pts2, scale)
+                area_m2        = explicit_area or _pdf_pts_to_m2(bbox_area_pts2, scale)
 
                 rooms.append(ExtractedRoom(
                     label=label,
@@ -325,8 +418,15 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
                     floor=floor,
                     bbox=(block["x0"], block["y0"], block["x1"], block["y1"]),
                     source="pdf_vector",
-                    notes="" if explicit_area else "⚠️ Area estimated from label bbox — verify manually.",
+                    notes="" if explicit_area else
+                          "⚠️ Area estimated from label bbox — verify manually.",
                 ))
+
+            if skipped_title_block:
+                logger.info(
+                    f"Page {page_num+1}: skipped {skipped_title_block} "
+                    f"title-block text blocks."
+                )
 
     return rooms
 
@@ -334,11 +434,38 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
 # ─── OCR parser (scanned PDF or image) ───────────────────────────────────────
 
 def _ocr_image(img) -> list[dict]:
-    """Run pytesseract on a PIL image and return word-level data."""
+    """
+    Run pytesseract on a PIL image and return word-level data.
+
+    Language priority:
+      chi_tra (Traditional Chinese) + chi_sim (Simplified Chinese) + eng
+    Falls back to eng-only if Chinese language data is not installed.
+
+    To install Chinese support on Ubuntu / Render:
+      apt-get install -y tesseract-ocr-chi-tra tesseract-ocr-chi-sim
+    """
     import pytesseract
+
+    # Determine available languages
+    try:
+        available = pytesseract.get_languages()
+    except Exception:
+        available = ["eng"]
+
+    if "chi_tra" in available and "chi_sim" in available:
+        lang = "chi_tra+chi_sim+eng"
+    elif "chi_tra" in available:
+        lang = "chi_tra+eng"
+    elif "chi_sim" in available:
+        lang = "chi_sim+eng"
+    else:
+        lang = "eng"
+
+    logger.info(f"OCR language: {lang}")
+
     data = pytesseract.image_to_data(
         img,
-        lang="eng",
+        lang=lang,
         config="--psm 11",   # sparse text — good for floor plans
         output_type=pytesseract.Output.DICT,
     )
@@ -358,9 +485,14 @@ def _ocr_image(img) -> list[dict]:
     return words
 
 
-def _words_to_rooms(words: list[dict], floor: str,
-                    scale: int, source: str) -> list[ExtractedRoom]:
-    """Convert OCR word list to ExtractedRoom list."""
+def _words_to_rooms(
+    words: list[dict], floor: str,
+    scale: int, source: str,
+    dpi: float = 150.0,
+    img_width: int = 0,
+    img_height: int = 0,
+) -> list[ExtractedRoom]:
+    """Convert OCR word list to ExtractedRoom list, filtering title block text."""
     rooms = []
     full_text = " ".join(w["text"] for w in words)
     detected  = _detect_scale([full_text])
@@ -378,7 +510,6 @@ def _words_to_rooms(words: list[dict], floor: str,
         for j, w2 in enumerate(words):
             if used[j] or i == j:
                 continue
-            # Same line (y within 8px) and close x
             if abs(w2["y0"] - w["y0"]) < 8 and abs(w2["x0"] - w["x1"]) < 40:
                 group.append(w2)
                 used[j] = True
@@ -392,14 +523,29 @@ def _words_to_rooms(words: list[dict], floor: str,
             "y1": max(g["y1"] for g in group),
         })
 
+    skipped = 0
     for p in phrases:
-        raw   = p["text"].strip()
+        raw = p["text"].strip()
+
+        # ── Title block filter ───────────────────────────────────────────────
+        if _is_title_block_text(raw, p["x0"], p["y0"],
+                                 float(img_width), float(img_height)):
+            skipped += 1
+            continue
+
         label = _clean_label(raw)
         if not label or len(label) < 2:
             continue
         if re.fullmatch(r'[\d\s.,:/\\-]+', label):
             continue
+
         explicit_area = _extract_area_from_text(raw)
+        if not explicit_area:
+            bbox_px2 = (p["x1"] - p["x0"]) * (p["y1"] - p["y0"])
+            est_area = _px_to_m2(bbox_px2, scale, dpi) if dpi > 0 else 0.0
+        else:
+            est_area = None
+
         rooms.append(ExtractedRoom(
             label=label,
             area_m2=explicit_area or 0.0,
@@ -407,29 +553,39 @@ def _words_to_rooms(words: list[dict], floor: str,
             bbox=(p["x0"], p["y0"], p["x1"], p["y1"]),
             source=source,
             confidence=p["conf"],
-            notes="" if explicit_area else "⚠️ No area annotation found — manual entry required.",
+            notes="" if explicit_area else
+                  f"⚠️ No area annotation — bbox estimate: ~{est_area:.2f} m² "
+                  f"(scale 1:{scale}, DPI {dpi:.0f}). Manual verification required.",
         ))
 
+    if skipped:
+        logger.info(f"OCR: skipped {skipped} title-block text blocks.")
     return rooms
 
 
 def _parse_pdf_ocr(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
-    """Extract rooms from a scanned PDF via OCR."""
+    """Extract rooms from a scanned PDF via OCR, filtering title block."""
     from pdf2image import convert_from_path
-    images = convert_from_path(filepath, dpi=200)
+    images = convert_from_path(filepath, dpi=150)
     rooms  = []
     for img in images:
         words = _ocr_image(img)
-        rooms.extend(_words_to_rooms(words, floor, scale, "pdf_ocr"))
+        rooms.extend(_words_to_rooms(
+            words, floor, scale, "pdf_ocr",
+            img_width=img.width, img_height=img.height,
+        ))
     return rooms
 
 
 def _parse_image(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
-    """Extract rooms from a JPG/PNG image via OCR."""
+    """Extract rooms from a JPG/PNG image via OCR, filtering title block."""
     from PIL import Image
     img   = Image.open(filepath)
     words = _ocr_image(img)
-    return _words_to_rooms(words, floor, scale, "image_ocr")
+    return _words_to_rooms(
+        words, floor, scale, "image_ocr",
+        img_width=img.width, img_height=img.height,
+    )
 
 
 # ─── Format detector ──────────────────────────────────────────────────────────

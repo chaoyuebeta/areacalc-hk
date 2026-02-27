@@ -1019,22 +1019,171 @@ ROOM_RULES: list[RoomRule] = [
 ]
 
 
+# ─── Chinese keyword → RoomRule label mapping ────────────────────────────────
+# Maps Chinese room labels (繁體 + 簡體) to the English RoomRule label.
+# This avoids modifying every RoomRule while adding full bilingual support.
+# Matching is substring-based (same as English keywords).
+
+_ZH_KEYWORDS: list[tuple[str, str]] = [
+    # ── Habitable rooms ──────────────────────────────────────────────────────
+    ("睡房",       "Bedroom"),
+    ("主人房",     "Bedroom"),
+    ("主臥室",     "Bedroom"),
+    ("卧室",       "Bedroom"),        # simplified
+    ("臥室",       "Bedroom"),
+    ("客廳",       "Living / Dining Room"),
+    ("起居室",     "Living / Dining Room"),
+    ("飯廳",       "Living / Dining Room"),
+    ("餐廳",       "Living / Dining Room"),
+    ("廚房",       "Kitchen"),
+    ("厨房",       "Kitchen"),        # simplified
+    ("書房",       "Study / Home Office"),
+    ("工作室",     "Study / Home Office"),
+
+    # ── Wet rooms ────────────────────────────────────────────────────────────
+    ("浴室",       "Bathroom / Toilet / WC"),
+    ("廁所",       "Bathroom / Toilet / WC"),
+    ("洗手間",     "Bathroom / Toilet / WC"),
+    ("衞生間",     "Bathroom / Toilet / WC"),
+    ("卫生间",     "Bathroom / Toilet / WC"),  # simplified
+
+    # ── Circulation ──────────────────────────────────────────────────────────
+    ("走廊",       "Internal Corridor / Hallway"),
+    ("通道",       "Internal Corridor / Hallway"),
+    ("入口大堂",   "Common Lift Lobby / Entrance Lobby"),
+    ("大廈大堂",   "Common Lift Lobby / Entrance Lobby"),
+    ("升降機大堂", "Common Lift Lobby / Entrance Lobby"),
+    ("電梯大堂",   "Common Lift Lobby / Entrance Lobby"),
+    ("大堂",       "Common Lift Lobby / Entrance Lobby"),
+    ("樓梯",       "Staircase / Vertical Duct (GFA-Excluded)"),
+    ("樓梯間",     "Staircase / Vertical Duct (GFA-Excluded)"),
+    ("消防樓梯",   "Staircase / Vertical Duct (GFA-Excluded)"),
+
+    # ── Storage ──────────────────────────────────────────────────────────────
+    ("儲物室",     "Storage / Utility Room"),
+    ("儲藏室",     "Storage / Utility Room"),
+    ("雜物室",     "Storage / Utility Room"),
+
+    # ── Item 1: Carpark ───────────────────────────────────────────────────────
+    ("停車場",     "Carpark / Loading & Unloading Area"),
+    ("停車位",     "Carpark / Loading & Unloading Area"),
+    ("車位",       "Carpark / Loading & Unloading Area"),
+    ("上落客區",   "Carpark / Loading & Unloading Area"),
+    ("裝卸區",     "Carpark / Loading & Unloading Area"),
+
+    # ── Item 2.1/2.2: Mandatory plant ────────────────────────────────────────
+    ("升降機機房", "Mandatory Plant Room (not PNAP-limited)"),
+    ("電梯機房",   "Mandatory Plant Room (not PNAP-limited)"),
+    ("電掣房",     "Mandatory Plant Room (not PNAP-limited)"),
+    ("變壓器房",   "Mandatory Plant Room (not PNAP-limited)"),
+    ("水泵房",     "Mandatory Plant Room (not PNAP-limited)"),
+    ("水箱",       "Mandatory Plant Room (not PNAP-limited)"),
+    ("垃圾房",     "Mandatory Plant Room (PNAP-limited)"),
+    ("廢物回收室", "Mandatory Plant Room (PNAP-limited)"),
+
+    # ── Item 2.3: Non-mandatory plant ────────────────────────────────────────
+    ("機電房",     "Non-Mandatory Plant Room"),
+    ("冷氣機房",   "Non-Mandatory Plant Room"),
+    ("機房",       "Non-Mandatory Plant Room"),
+    ("制冷機房",   "Non-Mandatory Plant Room"),
+
+    # ── Item 5: Balcony ───────────────────────────────────────────────────────
+    ("露台",       "Balcony"),
+    ("陽台",       "Balcony"),         # simplified
+    ("陽臺",       "Balcony"),
+
+    # ── Item 7: Sky garden ───────────────────────────────────────────────────
+    ("空中花園",   "Communal Sky Garden"),
+    ("天台花園",   "Communal Sky Garden"),
+    ("綠化平台",   "Communal Sky Garden"),
+
+    # ── Item 8: Podium garden ────────────────────────────────────────────────
+    ("平台花園",   "Communal Podium Garden"),
+    ("園景平台",   "Communal Podium Garden"),
+
+    # ── Item 12: Utility platform ────────────────────────────────────────────
+    ("工作平台",   "Utility Platform"),
+    ("服務平台",   "Utility Platform"),
+    ("晾衣平台",   "Utility Platform"),
+
+    # ── Item 14: Caretaker ───────────────────────────────────────────────────
+    ("管理員室",   "Caretaker / Management Facilities"),
+    ("保安室",     "Caretaker / Management Facilities"),
+    ("管理辦公室", "Caretaker / Management Facilities"),
+    ("業主立案法團辦公室", "Caretaker / Management Facilities"),
+
+    # ── Item 15: Recreational ────────────────────────────────────────────────
+    ("康樂設施",   "Residential Recreational Facility"),
+    ("健身室",     "Residential Recreational Facility"),
+    ("遊樂室",     "Residential Recreational Facility"),
+    ("多用途室",   "Residential Recreational Facility"),
+    ("泳池",       "Residential Recreational Facility"),
+    ("會所",       "Residential Recreational Facility"),
+
+    # ── Item 18: Lift shaft ──────────────────────────────────────────────────
+    ("升降機槽",   "Lift Shaft"),
+    ("電梯槽",     "Lift Shaft"),
+    ("電梯井",     "Lift Shaft"),
+
+    # ── Item 30: Refuge floor ────────────────────────────────────────────────
+    ("避難層",     "Refuge Floor"),
+    ("緊急救援層", "Refuge Floor"),
+
+    # ── Item 38: MiC ─────────────────────────────────────────────────────────
+    ("組裝合成建築法", "MiC Module / MiC Floor Area"),
+    ("組合建築",   "MiC Module / MiC Floor Area"),
+
+    # ── Non-domestic usable ──────────────────────────────────────────────────
+    ("商舖",       "F&B / Retail (Non-Domestic)"),
+    ("零售",       "F&B / Retail (Non-Domestic)"),
+    ("餐飲",       "F&B / Retail (Non-Domestic)"),
+    ("辦公室",     "F&B / Retail (Non-Domestic)"),
+
+    # ── Domestic unit ────────────────────────────────────────────────────────
+    ("單位",       "Flat / Domestic Unit"),
+    ("住宅單位",   "Flat / Domestic Unit"),
+]
+
+# Build a fast lookup: rule_label → RoomRule
+_RULE_BY_LABEL: dict[str, RoomRule] = {}
+
+
+def _build_label_index() -> None:
+    for rule in ROOM_RULES:
+        _RULE_BY_LABEL[rule.label] = rule
+
+
 # ─── Lookup helpers ───────────────────────────────────────────────────────────
 
 def _find_rule(room_label: str) -> Optional[RoomRule]:
     """
     Find the best matching RoomRule for a given label.
-    Case-insensitive; longest keyword match wins.
+    Supports English (case-insensitive keyword match) and
+    Chinese (Traditional + Simplified, substring match).
+    Longest match wins.
     """
+    if not _RULE_BY_LABEL:
+        _build_label_index()
+
     label_lower = room_label.lower().strip()
     best_rule:   Optional[RoomRule] = None
     best_length: int = -1
 
+    # ── English keyword matching ──────────────────────────────────────────────
     for rule in ROOM_RULES:
         for kw in rule.keywords:
             if kw in label_lower and len(kw) > best_length:
                 best_rule   = rule
                 best_length = len(kw)
+
+    # ── Chinese keyword matching ──────────────────────────────────────────────
+    # Chinese characters don't lowercase, so use original label
+    for zh_kw, rule_label in _ZH_KEYWORDS:
+        if zh_kw in room_label and len(zh_kw) > best_length:
+            rule = _RULE_BY_LABEL.get(rule_label)
+            if rule:
+                best_rule   = rule
+                best_length = len(zh_kw)
 
     return best_rule
 
