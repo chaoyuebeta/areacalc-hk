@@ -67,6 +67,56 @@ def _detect_scale(texts: list[str]) -> Optional[int]:
     return None
 
 
+def detect_scale_from_image(img) -> Optional[int]:
+    """
+    Attempt to detect drawing scale from a PIL image by:
+    1. OCR to find scale text (e.g. "SCALE 1:100")
+    2. Scale bar analysis via OpenCV line detection (if available)
+
+    Returns scale denominator int or None.
+    """
+    # Method 1: OCR text detection
+    try:
+        import pytesseract
+        text = pytesseract.image_to_string(img, config="--psm 6")
+        s = _detect_scale([text])
+        if s:
+            return s
+    except Exception:
+        pass
+
+    # Method 2: OpenCV scale bar detection (optional dependency)
+    try:
+        import cv2
+        import numpy as np
+        from PIL import Image as PILImage
+
+        # Convert to grayscale numpy array
+        gray = np.array(img.convert("L"))
+
+        # Look for horizontal lines in the bottom portion (scale bar location)
+        h, w = gray.shape
+        roi   = gray[int(h * 0.75):, :]   # bottom 25%
+        edges = cv2.Canny(roi, 50, 150)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50,
+                                 minLineLength=w//20, maxLineGap=10)
+        if lines is not None:
+            # Find longest horizontal line
+            best_len = 0
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+                if abs(y2 - y1) < 5:   # horizontal
+                    best_len = max(best_len, abs(x2 - x1))
+            if best_len > 0:
+                logger.debug(f"Scale bar candidate: {best_len}px wide")
+                # Can't determine scale without knowing the bar's labelled length
+                # Return None — caller will prompt user
+    except Exception:
+        pass
+
+    return None
+
+
 # ─── Area normalisation ───────────────────────────────────────────────────────
 
 def _dwg_units_to_m2(area_native: float, scale: int, unit: str = "mm") -> float:
