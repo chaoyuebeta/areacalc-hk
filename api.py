@@ -184,6 +184,9 @@ def analyse():
     raw_bt       = request.form.get("building_type", "residential")
     floor_label  = request.form.get("floor", "—")
     scale        = int(request.form.get("scale", 100))
+    paper_size   = request.form.get("paper_size", "A1")
+    paper_w_mm   = float(request.form.get("paper_width_mm", 0))
+    paper_h_mm   = float(request.form.get("paper_height_mm", 0))
     project_name = request.form.get("project_name", "Floor Plan Area Calculator")
     export_excel = request.form.get("export_excel", "false").lower() == "true"
 
@@ -197,7 +200,7 @@ def analyse():
     logger.info(f"Saved upload: {upload_path.name}  floor={floor_label}  type={building_type.value}")
 
     try:
-        extracted = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale)
+        extracted = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale, paper_size=paper_size, paper_width_mm=paper_w_mm, paper_height_mm=paper_h_mm)
         room_inputs = rooms_from_extracted(extracted)
 
         # Check if scale was auto-detected from scale bar
@@ -277,6 +280,9 @@ def analyse_batch():
     raw_bt       = request.form.get("building_type", "residential")
     floors_raw   = request.form.get("floors[]", "")
     scale        = int(request.form.get("scale", 100))
+    paper_size   = request.form.get("paper_size", "A1")
+    paper_w_mm   = float(request.form.get("paper_width_mm", 0))
+    paper_h_mm   = float(request.form.get("paper_height_mm", 0))
     project_name = request.form.get("project_name", "Floor Plan Area Calculator")
     export_excel = request.form.get("export_excel", "false").lower() == "true"
 
@@ -301,7 +307,7 @@ def analyse_batch():
         upload_path = _save_upload(file, suffix)
 
         try:
-            extracted   = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale)
+            extracted   = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale, paper_size=paper_size, paper_width_mm=paper_w_mm, paper_height_mm=paper_h_mm)
             room_inputs = rooms_from_extracted(extracted)
             all_inputs.extend(room_inputs)
             logger.info(f"Parsed floor '{floor_label}': {len(room_inputs)} rooms.")
@@ -401,43 +407,73 @@ def detect_scale():
     fallback_scale = int(request.form.get("scale", 100))
     upload_path    = _save_upload(file, suffix)
 
-    detected_scale  = None
+    detected_scale   = None
     detection_method = "none"
+    mm_per_pt        = None   # dimension calibration result
 
     try:
-        from floor_plan_parser import detect_scale_from_image, _detect_scale, _is_scanned_pdf
+        from floor_plan_parser import (detect_scale_from_image, _detect_scale,
+                                        _is_scanned_pdf,
+                                        _infer_mm_per_pt_from_dimensions,
+                                        _mm_per_pt_to_scale,
+                                        _is_title_block_text)
         import pdfplumber
 
         if suffix == ".pdf":
-            # Try text-based detection first
             try:
                 with pdfplumber.open(str(upload_path)) as pdf:
                     for page in pdf.pages[:3]:
-                        words     = page.extract_words(x_tolerance=3, y_tolerance=3)
+                        page_w = float(page.width)
+                        page_h = float(page.height)
+                        words  = page.extract_words(x_tolerance=3, y_tolerance=3)
                         full_text = " ".join(w["text"] for w in words)
+
+                        # Build blocks for dimension detection
+                        lines: dict = {}
+                        for w in words:
+                            lines.setdefault(round(w["top"],1), []).append(w)
+                        blocks = []
+                        for y_key, lw in sorted(lines.items()):
+                            lw.sort(key=lambda w: w["x0"])
+                            blocks.append({
+                                "text": " ".join(w["text"] for w in lw),
+                                "x0": min(w["x0"] for w in lw),
+                                "y0": min(w["top"] for w in lw),
+                                "x1": max(w["x1"] for w in lw),
+                                "y1": max(w["bottom"] for w in lw),
+                            })
+
+                        # Priority 1: dimension annotations
+                        mpp = _infer_mm_per_pt_from_dimensions(blocks, page_w, page_h)
+                        if mpp:
+                            mm_per_pt        = mpp
+                            detected_scale   = _mm_per_pt_to_scale(mpp)
+                            detection_method = "dimension"
+                            break
+
+                        # Priority 2: title block text
                         s = _detect_scale([full_text])
                         if s:
                             detected_scale   = s
                             detection_method = "text"
                             break
-                        # If no text scale, try scale bar on rendered image
-                        if not detected_scale:
-                            try:
-                                img = page.to_image(resolution=150).original
-                                s   = detect_scale_from_image(img)
-                                if s:
-                                    detected_scale   = s
-                                    detection_method = "scale_bar"
-                                    break
-                            except Exception:
-                                pass
+
+                        # Priority 3: scale bar image
+                        try:
+                            img = page.to_image(resolution=150).original
+                            s   = detect_scale_from_image(img)
+                            if s:
+                                detected_scale   = s
+                                detection_method = "scale_bar"
+                                break
+                        except Exception:
+                            pass
             except Exception as e:
                 logger.warning(f"PDF scale detection failed: {e}")
 
         elif suffix in (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"):
             from PIL import Image
             img = Image.open(str(upload_path))
-            # Try OCR text first
             import pytesseract
             text = pytesseract.image_to_string(img, config="--psm 6")
             s = _detect_scale([text])
@@ -451,20 +487,9 @@ def detect_scale():
                     detection_method = "scale_bar"
 
         elif suffix == ".dxf":
-            import ezdxf
-            doc   = ezdxf.readfile(str(upload_path))
-            msp   = doc.modelspace()
-            texts = []
-            for ent in msp.query("TEXT MTEXT"):
-                try:
-                    raw = ent.dxf.text if ent.dxftype() == "TEXT" else ent.text
-                    texts.append(raw.strip())
-                except Exception:
-                    pass
-            s = _detect_scale(texts)
-            if s:
-                detected_scale   = s
-                detection_method = "text"
+            # DXF uses real-world coordinates — scale is irrelevant
+            detected_scale   = 1
+            detection_method = "dwg_realworld"
 
     except Exception as e:
         logger.warning(f"detect-scale error: {e}")
@@ -472,15 +497,25 @@ def detect_scale():
         try: upload_path.unlink()
         except Exception: pass
 
+    confidence = ("high"   if detection_method in ("text", "dimension", "dwg_realworld")
+                  else "medium" if detection_method == "scale_bar"
+                  else "low")
+
     return jsonify({
         "success":          True,
         "detected_scale":   detected_scale,
         "fallback_scale":   fallback_scale,
         "scale_to_use":     detected_scale or fallback_scale,
-        "detection_method": detection_method,   # "text" | "scale_bar" | "none"
-        "confidence":       "high" if detection_method == "text"
-                            else "medium" if detection_method == "scale_bar"
-                            else "low",
+        "detection_method": detection_method,
+        "confidence":       confidence,
+        "mm_per_pt":        mm_per_pt,   # for dimension-calibrated PDFs
+        "note": (
+            "Scale derived from dimension annotations — highly accurate."
+            if detection_method == "dimension"
+            else "DWG/DXF uses real-world coordinates — scale not needed."
+            if detection_method == "dwg_realworld"
+            else None
+        ),
     })
 
 
@@ -515,6 +550,9 @@ def annotate():
     floor_label  = request.form.get("floor", "—")
     project_name = request.form.get("project_name", "Floor Plan")
     scale        = int(request.form.get("scale", 100))
+    paper_size   = request.form.get("paper_size", "A1")
+    paper_w_mm   = float(request.form.get("paper_width_mm", 0))
+    paper_h_mm   = float(request.form.get("paper_height_mm", 0))
     show_gfa     = request.form.get("show_gfa_rule", "true").lower() == "true"
     show_legend  = request.form.get("show_legend",   "true").lower() == "true"
 
@@ -542,7 +580,7 @@ def annotate():
                 for r in raw_rooms
             ]
         else:
-            extracted   = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale)
+            extracted   = parse_floor_plan(str(upload_path), floor=floor_label, scale=scale, paper_size=paper_size, paper_width_mm=paper_w_mm, paper_height_mm=paper_h_mm)
             room_inputs = rooms_from_extracted(extracted)
 
         if not room_inputs:

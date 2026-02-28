@@ -90,6 +90,98 @@ def _pdf_pts_to_m2(area_pts2: float, scale: int) -> float:
     return area_pts2 * (PT_TO_M ** 2) * (scale ** 2)
 
 
+def _pdf_area_from_mm_per_pt(area_pts2: float, mm_per_pt: float) -> float:
+    """Convert PDF area (pts²) to m² using a direct mm/pt calibration factor."""
+    return area_pts2 * (mm_per_pt / 1000.0) ** 2
+
+
+# ─── Dimension annotation calibration ────────────────────────────────────────
+# Finds numeric dimension annotations in vector PDFs (e.g. "2850", "3100") and
+# uses the ratio of annotated value to measured point-span to derive a direct
+# mm-per-pt calibration factor — no paper size or DPI needed.
+
+_DIM_NUM_RE  = re.compile(r'^(\d{3,5})$')     # standalone 3-5 digit integer
+_DIM_MIN_MM  = 200
+_DIM_MAX_MM  = 50_000
+
+
+def _infer_mm_per_pt_from_dimensions(
+    blocks: list[dict],
+    page_width: float,
+    page_height: float,
+) -> Optional[float]:
+    """
+    Infer a mm-per-point calibration factor from dimension annotations in a
+    vector PDF page (blocks = list of {text, x0, y0, x1, y1}).
+
+    Looks for horizontally-aligned pairs of dimension numbers.
+    The distance between their text centres vs their summed mm values gives
+    mm/pt.  Returns median of all valid estimates, or None if < 2 found.
+    """
+    candidates = []
+    for b in blocks:
+        raw = b["text"].strip()
+        if _is_title_block_text(raw, b["x0"], b["y0"], page_width, page_height):
+            continue
+        m = _DIM_NUM_RE.match(raw)
+        if not m:
+            continue
+        val = int(m.group(1))
+        if not (_DIM_MIN_MM <= val <= _DIM_MAX_MM):
+            continue
+        candidates.append({
+            "val": val,
+            "cx": (b["x0"] + b["x1"]) / 2,
+            "cy": (b["y0"] + b["y1"]) / 2,
+        })
+
+    if len(candidates) < 2:
+        return None
+
+    # Group into horizontal bands (5pt tolerance) and try consecutive pairs
+    by_row: dict[int, list[dict]] = {}
+    for c in candidates:
+        key = int(round(c["cy"] / 5)) * 5
+        by_row.setdefault(key, []).append(c)
+
+    estimates: list[float] = []
+    for row in by_row.values():
+        if len(row) < 2:
+            continue
+        row.sort(key=lambda r: r["cx"])
+        for i in range(len(row) - 1):
+            a, b = row[i], row[i + 1]
+            span_pt = abs(b["cx"] - a["cx"])
+            if span_pt < 5:
+                continue
+            for val in (a["val"], b["val"], a["val"] + b["val"]):
+                ratio = val / span_pt
+                # Sanity: covers 1:20 (7 mm/pt) to 1:500 (176 mm/pt) at 72dpi
+                if 5.0 <= ratio <= 200.0:
+                    estimates.append(ratio)
+
+    if not estimates:
+        return None
+
+    estimates.sort()
+    median = estimates[len(estimates) // 2]
+    implied_scale = int(median / 0.3528)
+    logger.info(
+        f"Dimension calibration: {len(estimates)} estimates, "
+        f"median {median:.4f} mm/pt → implied scale ≈ 1:{implied_scale}"
+    )
+    return median
+
+
+def _mm_per_pt_to_scale(mm_per_pt: float) -> int:
+    """Round mm/pt calibration to nearest standard scale integer."""
+    raw = mm_per_pt / 0.3528
+    for std in [20, 50, 75, 100, 150, 200, 250, 500, 1000]:
+        if raw <= std * 1.25:
+            return std
+    return 1000
+
+
 # ─── Area keyword extractor ───────────────────────────────────────────────────
 
 # Regex to pull explicit area annotations from text (e.g. "14.2 m²" or "14.20m2")
@@ -351,7 +443,11 @@ def _parse_dwg_dxf(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]
 def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
     """
     Extract rooms from a vector PDF using pdfplumber.
-    Title block text (bottom-right corner + keyword filter) is excluded.
+    Title block text is excluded.
+    Scale calibration priority:
+      1. Dimension annotations (mm values) → mm/pt direct calibration
+      2. Title block text "SCALE 1:100" → scale integer
+      3. User-supplied scale fallback
     """
     import pdfplumber
 
@@ -369,18 +465,12 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
             )
             full_text = " ".join(w["text"] for w in words)
 
-            # Detect scale from full page text (title block often has "SCALE 1:100")
-            detected = _detect_scale([full_text])
-            if detected:
-                scale = detected
-
-            # Group words into lines by y-position
+            # Build text blocks
             lines: dict[float, list[dict]] = {}
             for w in words:
                 key = round(w["top"], 1)
                 lines.setdefault(key, []).append(w)
 
-            # Build text blocks
             blocks: list[dict] = []
             for y, line_words in sorted(lines.items()):
                 line_words.sort(key=lambda w: w["x0"])
@@ -391,6 +481,26 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
                 y1   = max(w["bottom"] for w in line_words)
                 blocks.append({"text": text, "x0": x0, "y0": y0,
                                "x1": x1, "y1": y1})
+
+            # ── Calibration priority ─────────────────────────────────────────
+            # 1. Try dimension annotations first (most accurate)
+            mm_per_pt = _infer_mm_per_pt_from_dimensions(blocks, page_w, page_h)
+            calibration_source = "dimension_annotations"
+
+            if mm_per_pt is None:
+                # 2. Fall back to title block scale text
+                detected_scale = _detect_scale([full_text])
+                if detected_scale:
+                    scale = detected_scale
+                    calibration_source = "title_block_text"
+                else:
+                    calibration_source = "user_input"
+                mm_per_pt = None   # will use _pdf_pts_to_m2(scale) below
+
+            logger.info(
+                f"Page {page_num+1}: calibration={calibration_source}, "
+                + (f"mm/pt={mm_per_pt:.4f}" if mm_per_pt else f"scale=1:{scale}")
+            )
 
             skipped_title_block = 0
             for block in blocks:
@@ -410,7 +520,16 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
 
                 explicit_area  = _extract_area_from_text(raw)
                 bbox_area_pts2 = (block["x1"]-block["x0"]) * (block["y1"]-block["y0"])
-                area_m2        = explicit_area or _pdf_pts_to_m2(bbox_area_pts2, scale)
+
+                if explicit_area:
+                    area_m2 = explicit_area
+                    note    = ""
+                elif mm_per_pt is not None:
+                    area_m2 = _pdf_area_from_mm_per_pt(bbox_area_pts2, mm_per_pt)
+                    note    = f"⚠️ Area estimated from label bbox via dimension calibration ({mm_per_pt:.3f} mm/pt). Verify manually."
+                else:
+                    area_m2 = _pdf_pts_to_m2(bbox_area_pts2, scale)
+                    note    = "⚠️ Area estimated from label bbox — verify manually."
 
                 rooms.append(ExtractedRoom(
                     label=label,
@@ -418,8 +537,7 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
                     floor=floor,
                     bbox=(block["x0"], block["y0"], block["x1"], block["y1"]),
                     source="pdf_vector",
-                    notes="" if explicit_area else
-                          "⚠️ Area estimated from label bbox — verify manually.",
+                    notes=note,
                 ))
 
             if skipped_title_block:

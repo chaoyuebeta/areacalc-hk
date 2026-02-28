@@ -630,6 +630,11 @@ footer {
   .results-grid { grid-template-columns: 1fr 1fr; }
   .page-title { flex-direction: column; gap: 12px; align-items: flex-start; }
 }
+.field-hint { display: block; font-size: 10px; color: var(--muted);
+              font-weight: 400; margin-top: 2px; font-family: var(--mono); }
+.field-note  { font-size: 10px; color: var(--muted); font-family: var(--mono);
+               line-height: 1.5; }
+
 </style>
 </head>
 <body>
@@ -1333,8 +1338,10 @@ function showScaleModal(detectedScale, method, confidence, userManualScale) {
                          : confidence === 'medium' ? '~ Medium confidence'
                          : '⚠ Low confidence';
 
-    const src = method === 'text'      ? 'title block text'
-              : method === 'scale_bar' ? 'scale bar image'
+    const src = method === 'text'       ? 'title block text'
+              : method === 'scale_bar'  ? 'scale bar image'
+              : method === 'dimension'  ? 'dimension annotations (mm values)'
+              : method === 'dwg_realworld' ? 'DWG real-world coordinates'
               : 'file metadata';
     desc.innerHTML =
       `Scale <strong>1:${detectedScale}</strong> was read from the <strong>${src}</strong>.`
@@ -1725,11 +1732,6 @@ function renderResults(data, isDemo) {
   resultsEl.classList.add('visible');
   resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-
-.field-hint { display: block; font-size: 10px; color: var(--muted);
-              font-weight: 400; margin-top: 2px; font-family: var(--mono); }
-.field-note { font-size: 10px; color: var(--muted); font-family: var(--mono);
-              line-height: 1.5; }
 
 // ── Paper size helpers ────────────────────────────────────────────────────────
 function handlePaperSizeChange(sel) {
