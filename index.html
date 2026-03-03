@@ -1269,7 +1269,7 @@ async function runAnalyse() {
   const floorLabel   = document.getElementById('floor-label').value || '—';
   const projectName  = document.getElementById('project-name').value || 'Floor Plan';
   const exportExcel  = document.getElementById('export-excel').checked;
-  const userScale    = getScale();  // null if placeholder "auto-detect" selected
+  const userScale    = getScale();
 
   btnAnalyse.disabled = true;
   btnAnalyse.classList.add('loading');
@@ -1278,10 +1278,10 @@ async function runAnalyse() {
   resultsEl.classList.remove('visible');
   isDemoResult = false;
 
-  // Always run pre-flight detect, then always show modal — never silently proceed
   let detectedScale   = null;
   let detectionMethod = 'none';
   let confidence      = 'low';
+  let mmPerPt         = null;
 
   try {
     const preForm = new FormData();
@@ -1292,15 +1292,49 @@ async function runAnalyse() {
     if (preRes.ok && preData.success) {
       detectionMethod = preData.detection_method || 'none';
       confidence      = preData.confidence || 'low';
+      mmPerPt         = preData.mm_per_pt || null;
       if (detectionMethod !== 'none') detectedScale = preData.scale_to_use;
     }
-  } catch (e) { /* network error — show not-detected modal */ }
+  } catch (e) { /* network error — show modal */ }
 
+  // ── If dimension annotations found: skip modal entirely ──────────────────
+  if (detectionMethod === 'dimension' && detectedScale) {
+    _pendingAnalyseParams = null;
+    btnAnalyse.disabled = false;
+    btnAnalyse.classList.remove('loading');
+    btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner" style="display:none"></span>';
+    _setScaleSelector(detectedScale);
+    updatePaperSizeVisibility(selectedFile.name, true);  // hide — not needed
+    document.getElementById('paper-size-group') && (document.getElementById('paper-size-group').style.display = 'none');
+    showInfo('scale-hint',
+      `📐 Scale auto-calibrated from dimension annotations (${mmPerPt ? mmPerPt.toFixed(3)+' mm/pt' : '1:'+detectedScale}) — no manual input needed.`);
+    await _doAnalyse(buildingType, floorLabel, projectName, detectedScale, exportExcel);
+    return;
+  }
+
+  // ── If DWG/DXF real-world coords: also skip modal ────────────────────────
+  if (detectionMethod === 'dwg_realworld') {
+    _pendingAnalyseParams = null;
+    btnAnalyse.disabled = false;
+    btnAnalyse.classList.remove('loading');
+    btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner" style="display:none"></span>';
+    updatePaperSizeVisibility(selectedFile.name, true);  // hide — not needed
+    showInfo('scale-hint', '📐 DWG/DXF uses real-world coordinates — scale not needed.');
+    await _doAnalyse(buildingType, floorLabel, projectName, 1, exportExcel);
+    return;
+  }
+
+  // ── Otherwise show confirmation modal ────────────────────────────────────
   _pendingAnalyseParams = { buildingType, floorLabel, projectName, exportExcel };
   showScaleModal(detectedScale, detectionMethod, confidence, userScale);
   btnAnalyse.disabled = false;
   btnAnalyse.classList.remove('loading');
   btnAnalyse.innerHTML = 'Analyse Floor Plan <span class="spinner" style="display:none"></span>';
+}
+
+function showInfo(elementId, msg) {
+  const el = document.getElementById(elementId);
+  if (el) { el.textContent = msg; el.style.color = 'var(--accent)'; }
 }
 
 function setModalScale(val) {
@@ -1747,16 +1781,19 @@ function getPaperSize() {
     paper_height_mm: parseFloat(document.getElementById('paper-height')?.value || 0),
   };
 }
-function updatePaperSizeVisibility(filename) {
+function updatePaperSizeVisibility(filename, forceHide) {
   const group = document.getElementById('paper-size-group');
   if (!group) return;
+  if (forceHide) { group.style.display = 'none'; return; }
   const ext = (filename.split('.').pop() || '').toLowerCase();
   const isRaster = ['jpg','jpeg','png','tif','tiff','bmp'].includes(ext);
+  // DWG/DXF: never needs paper size
+  if (['dwg','dxf'].includes(ext)) { group.style.display = 'none'; return; }
   group.style.display = (isRaster || ext === 'pdf') ? 'block' : 'none';
   const note = group.querySelector('.field-note');
   if (note) note.textContent = isRaster
-    ? '📐 DWG / vector PDF do not need this — real-world coordinates are used directly.'
-    : '📋 For scanned PDFs only. Vector PDFs will ignore this setting.';
+    ? '📐 Required for JPG / scanned PDF to calculate actual dimensions.'
+    : '📋 Only needed for scanned PDFs — vector PDFs will ignore this.';
 }
 
 function handleScaleChange(sel) {
