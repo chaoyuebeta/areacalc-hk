@@ -490,14 +490,312 @@ def _parse_dwg_dxf(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]
 
 # ─── PDF vector parser ────────────────────────────────────────────────────────
 
+# Patterns that indicate leader / annotation text (NOT room labels)
+_LEADER_RE = re.compile(
+    r'\b(arch\.?\s*feature|for\s+[a-z]\.[a-z]\.[a-z]|arch\.|feature|'
+    r'r\.w\.p|p\.d\.|r\.c\.|a\.c\.\s*outdoor|outdoor\s*unit|'
+    r'管道|管線|建築裝飾|之建築裝飾|之空調|外牆|低層|升降機槽外|大廈|mansion)\b',
+    re.IGNORECASE,
+)
+# Pure dimension / measurement line (numbers + separators only)
+_PURE_DIM_RE = re.compile(r'^[\d\s.,:/\\×xX\-\+]+$')
+
+# HK floor plan: label font is typically 2-5x larger than dim text
+# We use char height as a proxy: room labels ≥ 5pt, dim text ≤ 4pt
+_MIN_LABEL_HEIGHT_PT = 3.5
+
+
+def _cluster_words_spatial(words: list[dict], page_w: float, page_h: float) -> list[dict]:
+    """
+    Group individual words into label clusters using spatial proximity.
+
+    Two words merge into the same cluster if:
+      - Same horizontal band: |Δy_centre| < max(h1,h2) * 1.5
+      - Horizontally adjacent: gap < max(char_width) * 3
+    OR
+      - Vertically stacked (same x zone, different y): |Δx_centre| < cluster_width * 0.6
+        and vertical gap < max(h1,h2) * 2  (multi-line labels like 睡房 / B.R.)
+
+    Returns list of cluster dicts with keys: text, x0, y0, x1, y1, line_count.
+    """
+    if not words:
+        return []
+
+    # Pre-filter: skip title block words early
+    candidates = [
+        w for w in words
+        if not _is_title_block_text(w["text"], w["x0"], w["top"],
+                                    page_w, page_h)
+        and (w["bottom"] - w["top"]) >= _MIN_LABEL_HEIGHT_PT
+    ]
+
+    # Sort top→bottom, left→right
+    candidates.sort(key=lambda w: (round(w["top"] / 4) * 4, w["x0"]))
+
+    merged   = [False] * len(candidates)
+    clusters = []
+
+    for i, wi in enumerate(candidates):
+        if merged[i]:
+            continue
+        group = [wi]
+        merged[i] = True
+        hi = wi["bottom"] - wi["top"]
+        wi_cx = (wi["x0"] + wi["x1"]) / 2
+
+        for j, wj in enumerate(candidates):
+            if merged[j] or i == j:
+                continue
+            hj   = wj["bottom"] - wj["top"]
+            h_   = max(hi, hj)
+            dy   = abs((wj["top"] + wj["bottom"]) / 2 - (wi["top"] + wi["bottom"]) / 2)
+            dx   = wj["x0"] - wi["x1"]   # positive = wj is to the right of wi
+
+            # Horizontal merge: same line, close gap
+            same_line = dy < h_ * 0.6
+            h_gap_ok  = -h_ < dx < h_ * 4
+            is_dim_i  = bool(_PURE_DIM_RE.match(wi["text"]))
+            is_dim_j  = bool(_PURE_DIM_RE.match(wj["text"]))
+
+            # Vertical merge: stacked label (e.g. 睡房 above B.R.)
+            wj_cx    = (wj["x0"] + wj["x1"]) / 2
+            w_span   = max(wi["x1"] - wi["x0"], wj["x1"] - wj["x0"])
+            same_col = abs(wj_cx - wi_cx) < max(w_span * 0.9, 10)
+            v_gap_ok = 0 <= (wj["top"] - wi["bottom"]) < h_ * 3.0
+
+            h_merge = same_line and h_gap_ok and not (is_dim_i or is_dim_j)
+            v_merge = same_col and v_gap_ok and not same_line and not is_dim_i and not is_dim_j
+
+            if h_merge or v_merge:
+                group.append(wj)
+                merged[j] = True
+
+        # Sort group: top→bottom, left→right; join lines with space or newline
+        group.sort(key=lambda w: (round(w["top"] / 3) * 3, w["x0"]))
+
+        # Reconstruct: words on same y-band → space; different bands → " / "
+        lines_out: list[list[dict]] = []
+        cur_line: list[dict] = [group[0]]
+        for w in group[1:]:
+            prev = cur_line[-1]
+            if abs(w["top"] - prev["top"]) < max(prev["bottom"]-prev["top"],
+                                                  w["bottom"]-w["top"]) * 1.2:
+                cur_line.append(w)
+            else:
+                lines_out.append(cur_line)
+                cur_line = [w]
+        lines_out.append(cur_line)
+
+        text_parts = [" ".join(w["text"] for w in ln) for ln in lines_out]
+        text = " / ".join(text_parts) if len(text_parts) > 1 else text_parts[0]
+
+        clusters.append({
+            "text":       text,
+            "x0":         min(w["x0"]     for w in group),
+            "y0":         min(w["top"]    for w in group),
+            "x1":         max(w["x1"]     for w in group),
+            "y1":         max(w["bottom"] for w in group),
+            "line_count": len(lines_out),
+            "char_h":     max(w["bottom"] - w["top"] for w in group),
+        })
+
+    return clusters
+
+
+def _is_noise_label(raw: str) -> bool:
+    """
+    Return True if the text is clearly NOT a room label:
+    - Pure dimension / number string
+    - Leader annotation (ARCH. FEATURE FOR R.W.P. etc.)
+    - Single letter or symbol
+    - Floor/level indicator (e.g. "3/F", "G/F")
+    - Scale / north arrow labels
+    """
+    s = raw.strip()
+    if not s or len(s) < 2:
+        return True
+    if _PURE_DIM_RE.match(s):
+        return True
+    if _LEADER_RE.search(s):
+        return True
+    # Single CJK character alone (not a room name)
+    if len(s) == 1:
+        return True
+    # Floor indicator like "1/F", "G/F", "B1/F"
+    if re.fullmatch(r'[BbGg]?\d{0,2}/[Ff]', s):
+        return True
+    # North arrow / scale bar label
+    if re.fullmatch(r'N\.?|NORTH|TRUE\s*NORTH', s, re.IGNORECASE):
+        return True
+    return False
+
+
+def _extract_room_rects(page) -> list[dict]:
+    """
+    Extract closed rectangular / polygonal regions from PDF page geometry.
+    These represent room boundaries drawn by the architect.
+
+    Returns list of dicts: {area_pts2, cx, cy, x0, y0, x1, y1}
+    Uses pdfplumber rects + curves (polylines that form closed shapes).
+
+    Minimum meaningful room size: 0.5 m² at 1:100 → ~5000 pt²  (≈70×70pt)
+    """
+    MIN_AREA_PT2 = 1000   # ~30×30 pt — smaller than this is a line artifact
+
+    rects_out = []
+
+    # Method 1: explicit rect objects
+    for r in getattr(page, "rects", []) or []:
+        try:
+            w = r["width"]; h = r["height"]
+            if w < 5 or h < 5:
+                continue
+            area = w * h
+            if area < MIN_AREA_PT2:
+                continue
+            rects_out.append({
+                "area_pts2": area,
+                "cx": r["x0"] + w / 2,
+                "cy": r["y0"] + h / 2,
+                "x0": r["x0"], "y0": r["y0"],
+                "x1": r["x1"], "y1": r["y1"],
+            })
+        except Exception:
+            continue
+
+    # Method 2: extract from lines — find axis-aligned closed rectangles
+    # Group horizontal and vertical lines, find intersecting pairs
+    h_lines = []
+    v_lines = []
+    for ln in getattr(page, "lines", []) or []:
+        try:
+            x0, y0, x1, y1 = ln["x0"], ln["y0"], ln["x1"], ln["y1"]
+            if abs(y1 - y0) < 2 and abs(x1 - x0) > 20:   # horizontal
+                h_lines.append((min(x0,x1), max(x0,x1), (y0+y1)/2))
+            elif abs(x1 - x0) < 2 and abs(y1 - y0) > 20: # vertical
+                v_lines.append(((x0+x1)/2, min(y0,y1), max(y0,y1)))
+        except Exception:
+            continue
+
+    # For each pair of h-lines and v-lines forming a rectangle
+    TOL = 4   # pt tolerance for line intersections
+    for i, (hx0_a, hx1_a, hy_a) in enumerate(h_lines):
+        for hx0_b, hx1_b, hy_b in h_lines[i+1:]:
+            if abs(hy_a - hy_b) < 10:
+                continue
+            y_top = min(hy_a, hy_b); y_bot = max(hy_a, hy_b)
+            x_overlap_min = max(hx0_a, hx0_b)
+            x_overlap_max = min(hx1_a, hx1_b)
+            if x_overlap_max - x_overlap_min < 20:
+                continue
+            # Find vertical lines closing this rectangle
+            for vx, vy0, vy1 in v_lines:
+                if not (x_overlap_min - TOL <= vx <= x_overlap_max + TOL):
+                    continue
+                if vy0 <= y_top + TOL and vy1 >= y_bot - TOL:
+                    w = x_overlap_max - x_overlap_min
+                    h = y_bot - y_top
+                    area = w * h
+                    if area >= MIN_AREA_PT2:
+                        rects_out.append({
+                            "area_pts2": area,
+                            "cx": (x_overlap_min + x_overlap_max) / 2,
+                            "cy": (y_top + y_bot) / 2,
+                            "x0": x_overlap_min, "y0": y_top,
+                            "x1": x_overlap_max, "y1": y_bot,
+                        })
+                    break
+
+    # Deduplicate overlapping rects (keep larger)
+    rects_out.sort(key=lambda r: -r["area_pts2"])
+    deduped = []
+    for r in rects_out:
+        overlap = False
+        for d in deduped:
+            ix0 = max(r["x0"], d["x0"]); iy0 = max(r["y0"], d["y0"])
+            ix1 = min(r["x1"], d["x1"]); iy1 = min(r["y1"], d["y1"])
+            if ix1 > ix0 and iy1 > iy0:
+                inter = (ix1-ix0)*(iy1-iy0)
+                if inter / r["area_pts2"] > 0.7:
+                    overlap = True
+                    break
+        if not overlap:
+            deduped.append(r)
+
+    return deduped
+
+
+def _match_labels_to_rects(
+    clusters: list[dict],
+    rects:    list[dict],
+    page_w:   float,
+    page_h:   float,
+) -> list[tuple[dict, Optional[dict]]]:
+    """
+    For each label cluster, find the best matching room rect.
+
+    Matching priority:
+      1. Label centre is INSIDE the rect
+      2. Label centre is closest to rect centre (within 3× rect diagonal)
+
+    Returns list of (cluster, rect_or_None).
+    Each rect can be matched to at most one label.
+    """
+    used_rects: set[int] = set()
+    matched: list[tuple[dict, Optional[dict]]] = []
+
+    for cl in clusters:
+        cx = (cl["x0"] + cl["x1"]) / 2
+        cy = (cl["y0"] + cl["y1"]) / 2
+
+        # Priority 1: label centre inside rect
+        inside = [
+            (i, r) for i, r in enumerate(rects)
+            if i not in used_rects
+            and r["x0"] <= cx <= r["x1"]
+            and r["y0"] <= cy <= r["y1"]
+        ]
+        if inside:
+            # Pick smallest rect that contains the label (most specific)
+            best_i, best_r = min(inside, key=lambda ir: ir[1]["area_pts2"])
+            used_rects.add(best_i)
+            matched.append((cl, best_r))
+            continue
+
+        # Priority 2: nearest rect centre within reasonable distance
+        if rects:
+            def _score(ir):
+                i, r = ir
+                if i in used_rects:
+                    return float("inf")
+                diag = math.hypot(r["x1"]-r["x0"], r["y1"]-r["y0"])
+                dist = math.hypot(cx - r["cx"], cy - r["cy"])
+                return dist / max(diag, 1)
+
+            best_i, best_r = min(enumerate(rects), key=_score)
+            score = _score((best_i, best_r))
+            if score < 2.0:   # within 2× diagonal distance
+                used_rects.add(best_i)
+                matched.append((cl, best_r))
+                continue
+
+        matched.append((cl, None))
+
+    return matched
+
+
 def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
     """
     Extract rooms from a vector PDF using pdfplumber.
-    Title block text is excluded.
-    Scale calibration priority:
-      1. Dimension annotations (mm values) → mm/pt direct calibration
-      2. Title block text "SCALE 1:100" → scale integer
-      3. User-supplied scale fallback
+
+    Pipeline:
+      1. Extract all words → spatial cluster into label groups
+         (fixes CJK single-char splitting, merges multi-line labels)
+      2. Noise filter: remove dimensions, leader annotations, titles
+      3. Extract room geometry (rects / closed polylines) for accurate area
+      4. Match labels → rects via spatial containment
+      5. Calibration: dimension annotations → mm/pt → area_m2
+         (fallback: title block scale text, then user-supplied scale)
     """
     import pdfplumber
 
@@ -508,92 +806,110 @@ def _parse_pdf_vector(filepath: str, floor: str, scale: int) -> list[ExtractedRo
             page_w = float(page.width)
             page_h = float(page.height)
 
+            # ── Step 1: Extract words ────────────────────────────────────────
             words = page.extract_words(
-                x_tolerance=3, y_tolerance=3,
+                x_tolerance=2, y_tolerance=2,
                 keep_blank_chars=False,
                 use_text_flow=False,
+                extra_attrs=["size"],   # get font size for filtering
             )
-            full_text = " ".join(w["text"] for w in words)
 
-            # Build text blocks
-            lines: dict[float, list[dict]] = {}
+            # ── Step 2: Calibration ──────────────────────────────────────────
+            # Build single-line blocks for dimension detection
+            line_map: dict[float, list[dict]] = {}
             for w in words:
-                key = round(w["top"], 1)
-                lines.setdefault(key, []).append(w)
+                line_map.setdefault(round(w["top"], 1), []).append(w)
+            raw_blocks = []
+            for y_key, lw in sorted(line_map.items()):
+                lw.sort(key=lambda w: w["x0"])
+                raw_blocks.append({
+                    "text": " ".join(w["text"] for w in lw),
+                    "x0": min(w["x0"] for w in lw),
+                    "y0": min(w["top"] for w in lw),
+                    "x1": max(w["x1"] for w in lw),
+                    "y1": max(w["bottom"] for w in lw),
+                })
 
-            blocks: list[dict] = []
-            for y, line_words in sorted(lines.items()):
-                line_words.sort(key=lambda w: w["x0"])
-                text = " ".join(w["text"] for w in line_words)
-                x0   = min(w["x0"]     for w in line_words)
-                y0   = min(w["top"]    for w in line_words)
-                x1   = max(w["x1"]     for w in line_words)
-                y1   = max(w["bottom"] for w in line_words)
-                blocks.append({"text": text, "x0": x0, "y0": y0,
-                               "x1": x1, "y1": y1})
-
-            # ── Calibration priority ─────────────────────────────────────────
-            # 1. Try dimension annotations first (most accurate)
-            mm_per_pt = _infer_mm_per_pt_from_dimensions(blocks, page_w, page_h)
-            calibration_source = "dimension_annotations"
-
+            mm_per_pt = _infer_mm_per_pt_from_dimensions(raw_blocks, page_w, page_h)
+            calib_src = "dimension_annotations"
             if mm_per_pt is None:
-                # 2. Fall back to title block scale text
-                detected_scale = _detect_scale([full_text])
-                if detected_scale:
-                    scale = detected_scale
-                    calibration_source = "title_block_text"
+                full_text = " ".join(b["text"] for b in raw_blocks)
+                ds = _detect_scale([full_text])
+                if ds:
+                    scale    = ds
+                    calib_src = "title_block_text"
                 else:
-                    calibration_source = "user_input"
-                mm_per_pt = None   # will use _pdf_pts_to_m2(scale) below
+                    calib_src = "user_input"
 
             logger.info(
-                f"Page {page_num+1}: calibration={calibration_source}, "
+                f"Page {page_num+1}: calib={calib_src} "
                 + (f"mm/pt={mm_per_pt:.4f}" if mm_per_pt else f"scale=1:{scale}")
             )
 
-            skipped_title_block = 0
-            for block in blocks:
-                raw = block["text"].strip()
+            # ── Step 3: Spatial clustering ───────────────────────────────────
+            clusters = _cluster_words_spatial(words, page_w, page_h)
 
-                # ── Title block filter ───────────────────────────────────────
-                if _is_title_block_text(raw, block["x0"], block["y0"],
-                                        page_w, page_h):
-                    skipped_title_block += 1
+            # ── Step 4: Noise filtering ──────────────────────────────────────
+            clean_clusters = []
+            skipped_noise = 0
+            for cl in clusters:
+                raw = cl["text"].strip()
+                if _is_noise_label(raw):
+                    skipped_noise += 1
                     continue
-
                 label = _clean_label(raw)
                 if not label or len(label) < 2:
+                    skipped_noise += 1
                     continue
-                if re.fullmatch(r'[\d\s.,:/\\-]+', label):
-                    continue
+                cl["label"] = label
+                clean_clusters.append(cl)
 
-                explicit_area  = _extract_area_from_text(raw)
-                bbox_area_pts2 = (block["x1"]-block["x0"]) * (block["y1"]-block["y0"])
+            logger.info(
+                f"Page {page_num+1}: {len(clusters)} clusters → "
+                f"{len(clean_clusters)} after noise filter "
+                f"({skipped_noise} removed)"
+            )
+
+            # ── Step 5: Extract room geometry ────────────────────────────────
+            rects = _extract_room_rects(page)
+            logger.info(f"Page {page_num+1}: {len(rects)} room rects found")
+
+            # ── Step 6: Match labels → rects ─────────────────────────────────
+            matched = _match_labels_to_rects(clean_clusters, rects, page_w, page_h)
+
+            # ── Step 7: Build ExtractedRoom list ─────────────────────────────
+            for cl, rect in matched:
+                label = cl["label"]
+
+                # Area: prefer explicit annotation, then rect geometry, then 0
+                explicit_area = _extract_area_from_text(cl["text"])
 
                 if explicit_area:
                     area_m2 = explicit_area
                     note    = ""
-                elif mm_per_pt is not None:
-                    area_m2 = _pdf_area_from_mm_per_pt(bbox_area_pts2, mm_per_pt)
-                    note    = f"⚠️ Area estimated from label bbox via dimension calibration ({mm_per_pt:.3f} mm/pt). Verify manually."
+                elif rect is not None:
+                    if mm_per_pt is not None:
+                        area_m2 = _pdf_area_from_mm_per_pt(rect["area_pts2"], mm_per_pt)
+                        note    = f"Area from room geometry · calibration: {mm_per_pt:.3f} mm/pt"
+                    else:
+                        area_m2 = _pdf_pts_to_m2(rect["area_pts2"], scale)
+                        note    = f"Area from room geometry · scale 1:{scale}"
                 else:
-                    area_m2 = _pdf_pts_to_m2(bbox_area_pts2, scale)
-                    note    = "⚠️ Area estimated from label bbox — verify manually."
+                    area_m2 = 0.0
+                    note    = "⚠️ No room boundary found — enter area manually."
 
                 rooms.append(ExtractedRoom(
                     label=label,
                     area_m2=round(area_m2, 4),
                     floor=floor,
-                    bbox=(block["x0"], block["y0"], block["x1"], block["y1"]),
+                    bbox=(cl["x0"], cl["y0"], cl["x1"], cl["y1"]),
                     source="pdf_vector",
                     notes=note,
                 ))
 
-            if skipped_title_block:
+            if skipped_noise:
                 logger.info(
-                    f"Page {page_num+1}: skipped {skipped_title_block} "
-                    f"title-block text blocks."
+                    f"Page {page_num+1}: removed {skipped_noise} noise labels."
                 )
 
     return rooms
@@ -731,7 +1047,10 @@ def _words_to_rooms(
     return rooms
 
 
-def _parse_pdf_ocr(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
+def _parse_pdf_ocr(
+    filepath: str, floor: str, scale: int,
+    paper_size: str = "A1", paper_width_mm: float = 0, paper_height_mm: float = 0,
+) -> list[ExtractedRoom]:
     """Extract rooms from a scanned PDF via OCR, filtering title block."""
     from pdf2image import convert_from_path
     images = convert_from_path(filepath, dpi=150)
@@ -745,7 +1064,10 @@ def _parse_pdf_ocr(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]
     return rooms
 
 
-def _parse_image(filepath: str, floor: str, scale: int) -> list[ExtractedRoom]:
+def _parse_image(
+    filepath: str, floor: str, scale: int,
+    paper_size: str = "A1", paper_width_mm: float = 0, paper_height_mm: float = 0,
+) -> list[ExtractedRoom]:
     """Extract rooms from a JPG/PNG image via OCR, filtering title block."""
     from PIL import Image
     img   = Image.open(filepath)
@@ -775,22 +1097,28 @@ def _is_scanned_pdf(filepath: str) -> bool:
 # ─── Public API ───────────────────────────────────────────────────────────────
 
 def parse_floor_plan(
-    filepath:    str,
-    floor:       str = "—",
-    scale:       int = 100,     # Confirmed by QS review Q5.2: HK standard is 1:100
-    force_ocr:   bool = False,
+    filepath:        str,
+    floor:           str   = "—",
+    scale:           int   = 100,
+    force_ocr:       bool  = False,
+    paper_size:      str   = "A1",
+    paper_width_mm:  float = 0,
+    paper_height_mm: float = 0,
 ) -> list[ExtractedRoom]:
     """
     Parse a floor plan file and return a list of ExtractedRoom objects.
 
     Args:
-        filepath:  Path to DWG, DXF, PDF, JPG, or PNG file.
-        floor:     Floor label, e.g. "3/F".
-        scale:     Fallback drawing scale denominator.
-                   Default 100 (= 1:100). Confirmed by QS review Q5.2:
-                   HK firms typically draw at 1:100 in millimetres.
-                   Auto-detected from title block text when possible.
-        force_ocr: Force OCR even for vector PDFs.
+        filepath:        Path to DWG, DXF, PDF, JPG, or PNG file.
+        floor:           Floor label, e.g. "3/F".
+        scale:           Fallback drawing scale denominator (default 100).
+                         Ignored for DWG/DXF (real-world coordinates used).
+        force_ocr:       Force OCR even for vector PDFs.
+        paper_size:      Paper size for raster images / scanned PDFs
+                         ("A0","A1","A2","A3","A4","A1+","custom").
+                         Used to estimate DPI. Ignored for vector PDFs/DWG.
+        paper_width_mm:  Used when paper_size="custom".
+        paper_height_mm: Used when paper_size="custom".
 
     Returns:
         List[ExtractedRoom]
@@ -805,27 +1133,29 @@ def parse_floor_plan(
     if not path.exists():
         raise FileNotFoundError(f"File not found: {filepath}")
 
-    logger.info(f"Parsing {ext} file: {filepath}")
+    logger.info(f"Parsing {ext} | floor={floor} | scale=1:{scale} | paper={paper_size}")
 
     if ext in (".dwg", ".dxf"):
         if ext == ".dwg":
             raise ValueError(
                 "DWG files must be converted to DXF before parsing.\n"
                 "Recommended tools: ODA File Converter (free) or LibreCAD.\n"
-                "Then call parse_floor_plan() with the .dxf file."
+                "Note: Scale is NOT needed for DXF — real coordinates are used."
             )
         return _parse_dwg_dxf(filepath, floor, scale)
 
     elif ext == ".pdf":
         if force_ocr or _is_scanned_pdf(filepath):
             logger.info("PDF detected as scanned — using OCR.")
-            return _parse_pdf_ocr(filepath, floor, scale)
+            return _parse_pdf_ocr(filepath, floor, scale,
+                                  paper_size, paper_width_mm, paper_height_mm)
         else:
             logger.info("PDF detected as vector — using pdfplumber.")
             return _parse_pdf_vector(filepath, floor, scale)
 
     elif ext in (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"):
-        return _parse_image(filepath, floor, scale)
+        return _parse_image(filepath, floor, scale,
+                            paper_size, paper_width_mm, paper_height_mm)
 
     else:
         raise ValueError(
